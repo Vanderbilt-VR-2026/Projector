@@ -222,7 +222,25 @@ namespace Projector.Editor
             CreateCube("Vent", root.transform, new Vector3(-0.36f, 0f, 0f), new Vector3(0.025f, 0.14f, 0.35f), trim, false);
 
             for (int i = 0; i < 3; i++)
-                CreateCylinder("Control Button " + (i + 1), root.transform, new Vector3(-0.16f + i * 0.13f, 0.19f, -0.08f), new Vector3(0.038f, 0.012f, 0.038f), Vector3.zero, trim, false);
+                CreatePokeButton("Control Button " + (i + 1), root.transform, new Vector3(-0.16f + i * 0.13f, 0.19f, -0.08f), trim);
+        }
+
+        private static void CreatePokeButton(string name, Transform parent, Vector3 localPosition, Material material)
+        {
+            GameObject button = CreateCylinder(name, parent, localPosition, new Vector3(0.052f, 0.014f, 0.052f), Vector3.zero, material, true);
+            Collider buttonCollider = button.GetComponent<Collider>();
+
+            XRSimpleInteractable interactable = button.AddComponent<XRSimpleInteractable>();
+            interactable.colliders.Add(buttonCollider);
+
+            XRPokeFilter pokeFilter = button.AddComponent<XRPokeFilter>();
+            pokeFilter.pokeInteractable = interactable;
+            pokeFilter.pokeCollider = buttonCollider;
+            pokeFilter.pokeConfiguration = new PokeThresholdDatumProperty(new PokeThresholdData
+            {
+                pokeDirection = PokeAxis.NegativeY,
+                interactionDepthOffset = 0.004f
+            });
         }
 
         private static void CreatePortrait(Material portrait, Material frame)
