@@ -140,11 +140,11 @@ namespace Projector.Editor
             };
             Vector3[] positions =
             {
-                new Vector3(-1.72f, 0f, 0.25f),
-                new Vector3(-0.88f, 0f, 0.55f),
-                new Vector3(-0.05f, 0f, 0.18f),
-                new Vector3(0.78f, 0f, 0.48f),
-                new Vector3(1.45f, 0f, 0.10f)
+                new Vector3(-0.72f, 0f, 0.10f),
+                new Vector3(-0.36f, 0f, 0.20f),
+                new Vector3(0.00f, 0f, 0.08f),
+                new Vector3(0.38f, 0f, 0.20f),
+                new Vector3(0.70f, 0f, 0.06f)
             };
             Vector3[] rotations =
             {
@@ -213,7 +213,7 @@ namespace Projector.Editor
         private static void CreateProjector(Material body, Material trim, Material lens)
         {
             GameObject root = new GameObject("Projector - Right Corner");
-            root.transform.position = new Vector3(2.00f, 0.99f, 0.72f);
+            root.transform.position = new Vector3(1.30f, 0.99f, 0.36f);
 
             CreateCube("Projector Body", root.transform, Vector3.zero, new Vector3(0.70f, 0.28f, 0.62f), body, true);
             CreateCube("Top Panel", root.transform, new Vector3(0f, 0.155f, -0.02f), new Vector3(0.54f, 0.035f, 0.44f), trim, false);
@@ -298,7 +298,8 @@ namespace Projector.Editor
 
             GameObject rig = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             rig.name = "XR Origin - Quest 3 Hands and Controllers";
-            rig.transform.position = new Vector3(0f, 0f, -2.65f);
+            // Spawn at the table's front edge so fruit is within arm's reach without leaving the Guardian boundary.
+            rig.transform.position = new Vector3(0f, 0f, -0.40f);
             rig.transform.rotation = Quaternion.identity;
 
             Camera camera = rig.GetComponentInChildren<Camera>(true);
