@@ -37,11 +37,14 @@ namespace Projector.Editor
             Material metal = CreateMaterial("DarkMetal", new Color(0.055f, 0.06f, 0.07f), 0.55f, 0.75f);
             Material projectorBody = CreateMaterial("ProjectorBody", new Color(0.86f, 0.87f, 0.88f), 0.42f, 0.05f);
             Material lens = CreateMaterial("ProjectorLens", new Color(0.045f, 0.075f, 0.105f), 0.75f, 0.35f);
+            Material boardSurface = CreateMaterial("WhiteboardSurface", new Color(0.98f, 0.985f, 0.99f), 0.85f, 0f);
+            Material aluminum = CreateMaterial("BrushedAluminum", new Color(0.66f, 0.68f, 0.70f), 0.55f, 0.85f);
 
             CreateRoom(whiteWall, sideWall, floor);
             CreateTable(wood, metal);
             CreateFruitObjects();
             CreateProjector(projectorBody, metal, lens);
+            CreateWhiteboard(boardSurface, aluminum);
             CreateLighting();
             CreateXrRig();
 
@@ -244,6 +247,25 @@ namespace Projector.Editor
                 pokeDirection = PokeAxis.NegativeY,
                 interactionDepthOffset = 0.004f
             });
+        }
+
+        private static void CreateWhiteboard(Material surface, Material frame)
+        {
+            // Empty board mounted on the front wall's inner face; local +z points out of the wall toward the room.
+            GameObject root = new GameObject("Whiteboard - Front Wall");
+            root.transform.position = new Vector3(0f, 1.55f, RoomFrontZ - 0.08f);
+            root.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+
+            const float width = 3.6f;
+            const float height = 1.5f;
+            const float rail = 0.035f;
+
+            CreateCube("Board Surface", root.transform, new Vector3(0f, 0f, 0.015f), new Vector3(width, height, 0.03f), surface, true);
+            CreateCube("Frame Top", root.transform, new Vector3(0f, (height + rail) / 2f, 0.02f), new Vector3(width + rail * 2f, rail, 0.04f), frame, false);
+            CreateCube("Frame Bottom", root.transform, new Vector3(0f, -(height + rail) / 2f, 0.02f), new Vector3(width + rail * 2f, rail, 0.04f), frame, false);
+            CreateCube("Frame Left", root.transform, new Vector3(-(width + rail) / 2f, 0f, 0.02f), new Vector3(rail, height, 0.04f), frame, false);
+            CreateCube("Frame Right", root.transform, new Vector3((width + rail) / 2f, 0f, 0.02f), new Vector3(rail, height, 0.04f), frame, false);
+            CreateCube("Marker Tray", root.transform, new Vector3(0f, -height / 2f - rail - 0.01f, 0.06f), new Vector3(width * 0.6f, 0.02f, 0.08f), frame, true);
         }
 
         private static void CreateLighting()
