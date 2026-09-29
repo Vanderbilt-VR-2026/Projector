@@ -13,15 +13,19 @@ namespace Projector.Editor
         private const string ScenePath = "Assets/Scenes/ProjectorRoom.unity";
         private const string GeneratedFolder = "Assets/Generated/QuestRoom";
         private const string FoodPackFolder = "Assets/ThirdParty/Quaternius/UltimateFoodPack";
-        private const string PortraitPath = "Assets/Art/DiermeierPortrait.png";
         private const string XrRigPath = "Assets/Samples/XR Interaction Toolkit/3.3.0/Hands Interaction Demo/Prefabs/XR Origin Hands (XR Rig).prefab";
+
+        // The room starts just behind the player and runs forward, leaving open floor past the table for level building.
+        private const float RoomBackZ = -4f;
+        private const float RoomLength = 24f;
+        private const float RoomCenterZ = RoomBackZ + RoomLength / 2f;
+        private const float RoomFrontZ = RoomBackZ + RoomLength;
 
         [MenuItem("Projector/Build Quest Room Scene")]
         public static void BuildScene()
         {
             EnsureFolder("Assets/Generated");
             EnsureFolder(GeneratedFolder);
-            ConfigurePortraitTexture();
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             scene.name = "Projector Room";
@@ -33,14 +37,11 @@ namespace Projector.Editor
             Material metal = CreateMaterial("DarkMetal", new Color(0.055f, 0.06f, 0.07f), 0.55f, 0.75f);
             Material projectorBody = CreateMaterial("ProjectorBody", new Color(0.86f, 0.87f, 0.88f), 0.42f, 0.05f);
             Material lens = CreateMaterial("ProjectorLens", new Color(0.045f, 0.075f, 0.105f), 0.75f, 0.35f);
-            Material frame = CreateMaterial("PortraitFrame", new Color(0.24f, 0.15f, 0.055f), 0.35f, 0.1f);
-            Material portrait = CreatePortraitMaterial();
 
             CreateRoom(whiteWall, sideWall, floor);
             CreateTable(wood, metal);
             CreateFruitObjects();
             CreateProjector(projectorBody, metal, lens);
-            CreatePortrait(portrait, frame);
             CreateLighting();
             CreateXrRig();
 
@@ -101,11 +102,11 @@ namespace Projector.Editor
         private static void CreateRoom(Material whiteWall, Material sideWall, Material floor)
         {
             GameObject root = new GameObject("Room");
-            CreateCube("Floor", root.transform, new Vector3(0f, -0.08f, 0f), new Vector3(8f, 0.16f, 8f), floor, true);
-            CreateCube("White Feature Wall", root.transform, new Vector3(0f, 2.25f, 4f), new Vector3(8f, 4.5f, 0.16f), whiteWall, true);
-            CreateCube("Left Wall", root.transform, new Vector3(-4f, 2.25f, 0f), new Vector3(0.16f, 4.5f, 8f), sideWall, true);
-            CreateCube("Right Wall", root.transform, new Vector3(4f, 2.25f, 0f), new Vector3(0.16f, 4.5f, 8f), sideWall, true);
-            CreateCube("Ceiling", root.transform, new Vector3(0f, 4.5f, 0f), new Vector3(8f, 0.12f, 8f), whiteWall, false);
+            CreateCube("Floor", root.transform, new Vector3(0f, -0.08f, RoomCenterZ), new Vector3(8f, 0.16f, RoomLength), floor, true);
+            CreateCube("White Feature Wall", root.transform, new Vector3(0f, 2.25f, RoomFrontZ), new Vector3(8f, 4.5f, 0.16f), whiteWall, true);
+            CreateCube("Left Wall", root.transform, new Vector3(-4f, 2.25f, RoomCenterZ), new Vector3(0.16f, 4.5f, RoomLength), sideWall, true);
+            CreateCube("Right Wall", root.transform, new Vector3(4f, 2.25f, RoomCenterZ), new Vector3(0.16f, 4.5f, RoomLength), sideWall, true);
+            CreateCube("Ceiling", root.transform, new Vector3(0f, 4.5f, RoomCenterZ), new Vector3(8f, 0.12f, RoomLength), whiteWall, false);
         }
 
         private static void CreateTable(Material wood, Material metal)
@@ -154,7 +155,7 @@ namespace Projector.Editor
                 new Vector3(0f, 17f, 0f),
                 new Vector3(0f, -14f, 0f)
             };
-            float[] targetSizes = { 0.30f, 0.36f, 0.50f, 0.38f, 0.30f };
+            float[] targetSizes = { 0.10f, 0.12f, 0.167f, 0.127f, 0.10f };
 
             for (int i = 0; i < assetPaths.Length; i++)
             {
@@ -212,8 +213,10 @@ namespace Projector.Editor
 
         private static void CreateProjector(Material body, Material trim, Material lens)
         {
-            GameObject root = new GameObject("Projector - Right Corner");
-            root.transform.position = new Vector3(1.30f, 0.99f, 0.36f);
+            // Set into the right wall with the lens facing the left wall; buttons on top stay at hand height.
+            GameObject root = new GameObject("Projector - Right Wall");
+            root.transform.position = new Vector3(3.77f, 1.30f, 0.55f);
+            root.transform.rotation = Quaternion.Euler(0f, -90f, 0f);
 
             CreateCube("Projector Body", root.transform, Vector3.zero, new Vector3(0.70f, 0.28f, 0.62f), body, true);
             CreateCube("Top Panel", root.transform, new Vector3(0f, 0.155f, -0.02f), new Vector3(0.54f, 0.035f, 0.44f), trim, false);
@@ -243,26 +246,6 @@ namespace Projector.Editor
             });
         }
 
-        private static void CreatePortrait(Material portrait, Material frame)
-        {
-            GameObject root = new GameObject("Chancellor Diermeier Portrait");
-            root.transform.position = new Vector3(-3.905f, 2.18f, 1.30f);
-
-            GameObject image = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            image.name = "Realistic Portrait";
-            image.transform.SetParent(root.transform);
-            image.transform.localPosition = new Vector3(0.012f, 0f, 0f);
-            image.transform.localRotation = Quaternion.Euler(0f, -90f, 0f);
-            image.transform.localScale = new Vector3(1.08f, 1.38f, 1f);
-            image.GetComponent<MeshRenderer>().sharedMaterial = portrait;
-            Object.DestroyImmediate(image.GetComponent<MeshCollider>());
-
-            CreateCube("Frame Top", root.transform, new Vector3(0f, 0.75f, 0f), new Vector3(0.075f, 0.10f, 1.22f), frame, false);
-            CreateCube("Frame Bottom", root.transform, new Vector3(0f, -0.75f, 0f), new Vector3(0.075f, 0.10f, 1.22f), frame, false);
-            CreateCube("Frame Front", root.transform, new Vector3(0f, 0f, -0.61f), new Vector3(0.075f, 1.40f, 0.10f), frame, false);
-            CreateCube("Frame Back", root.transform, new Vector3(0f, 0f, 0.61f), new Vector3(0.075f, 1.40f, 0.10f), frame, false);
-        }
-
         private static void CreateLighting()
         {
             GameObject key = new GameObject("Soft Directional Light");
@@ -276,6 +259,8 @@ namespace Projector.Editor
 
             CreatePointLight("Ceiling Fill Left", new Vector3(-2.2f, 3.65f, 0.2f), new Color(1f, 0.84f, 0.68f), 5.5f, 5.3f);
             CreatePointLight("Ceiling Fill Right", new Vector3(2.2f, 3.65f, 0.2f), new Color(0.75f, 0.86f, 1f), 4.2f, 5.3f);
+            CreatePointLight("Ceiling Fill Mid", new Vector3(0f, 3.65f, 8f), new Color(1f, 0.92f, 0.82f), 5.5f, 7f);
+            CreatePointLight("Ceiling Fill Far", new Vector3(0f, 3.65f, 15f), new Color(1f, 0.92f, 0.82f), 5.5f, 7f);
         }
 
         private static void CreatePointLight(string name, Vector3 position, Color color, float intensity, float range)
@@ -351,38 +336,6 @@ namespace Projector.Editor
             material.SetFloat("_Metallic", metallic);
             AssetDatabase.CreateAsset(material, path);
             return material;
-        }
-
-        private static Material CreatePortraitMaterial()
-        {
-            string path = GeneratedFolder + "/DiermeierPortrait.mat";
-            AssetDatabase.DeleteAsset(path);
-            Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(PortraitPath);
-            if (texture == null)
-                throw new MissingReferenceException("Portrait texture was not found at " + PortraitPath);
-
-            Shader shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Texture");
-            Material material = new Material(shader) { name = "Diermeier Portrait" };
-            material.SetTexture("_BaseMap", texture);
-            material.SetTexture("_MainTex", texture);
-            material.SetColor("_BaseColor", Color.white);
-            AssetDatabase.CreateAsset(material, path);
-            return material;
-        }
-
-        private static void ConfigurePortraitTexture()
-        {
-            AssetDatabase.ImportAsset(PortraitPath, ImportAssetOptions.ForceSynchronousImport);
-            TextureImporter importer = AssetImporter.GetAtPath(PortraitPath) as TextureImporter;
-            if (importer == null)
-                return;
-
-            importer.textureType = TextureImporterType.Default;
-            importer.sRGBTexture = true;
-            importer.mipmapEnabled = true;
-            importer.maxTextureSize = 1024;
-            importer.textureCompression = TextureImporterCompression.CompressedHQ;
-            importer.SaveAndReimport();
         }
 
         private static void EnsureFolder(string path)
