@@ -10,7 +10,7 @@ namespace Projector.Editor
 {
     public static class QuestRoomSceneBuilder
     {
-        private const string ScenePath = "Assets/Scenes/SampleScene.unity";
+        private const string ScenePath = "Assets/Scenes/ProjectorRoom.unity";
         private const string GeneratedFolder = "Assets/Generated/QuestRoom";
         private const string FoodPackFolder = "Assets/ThirdParty/Quaternius/UltimateFoodPack";
         private const string PortraitPath = "Assets/Art/DiermeierPortrait.png";
