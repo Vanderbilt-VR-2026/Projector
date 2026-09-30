@@ -1,0 +1,214 @@
+using UnityEditor;
+using UnityEditor.Events;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
+using UnityEngine.XR.Interaction.Toolkit.UI;
+
+public static class LandingMenuBuilder
+{
+    const string XROriginPrefabPath = "Assets/Samples/XR Interaction Toolkit/3.3.0/Starter Assets/Prefabs/XR Origin (XR Rig).prefab";
+    const string LandingMenuScenePath = "Assets/Scenes/LandingMenu.unity";
+
+    [MenuItem("Projector/Create Landing Menu Scene")]
+    public static void CreateLandingMenuScene()
+    {
+        if (AssetDatabase.LoadAssetAtPath<SceneAsset>(LandingMenuScenePath) != null)
+        {
+            EditorUtility.DisplayDialog("Landing Menu Scene", "LandingMenu.unity already exists.", "OK");
+            return;
+        }
+
+        var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+        var xrOriginPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(XROriginPrefabPath);
+        if (xrOriginPrefab == null)
+        {
+            Debug.LogError($"Could not find XR Origin prefab at {XROriginPrefabPath}.");
+            return;
+        }
+
+        PrefabUtility.InstantiatePrefab(xrOriginPrefab, scene);
+            CreateDirectionalLight();
+        CreateFloor();
+        CreateLandingMenuObjects();
+        EditorSceneManager.SaveScene(scene, LandingMenuScenePath);
+        AssetDatabase.Refresh();
+    }
+
+        [MenuItem("Projector/Rebuild Landing Menu Objects")]
+        public static void RebuildLandingMenuObjects()
+        {
+            var controller = Object.FindFirstObjectByType<LandingMenu>();
+            if (controller == null)
+            {
+                CreateLandingMenuObjects();
+                return;
+            }
+
+            var existingMenu = controller.transform.Find("Landing Menu");
+            if (existingMenu != null)
+                Undo.DestroyObjectImmediate(existingMenu.gameObject);
+
+            CreateLandingMenuObjects();
+        }
+
+    [MenuItem("Projector/Create Landing Menu Objects")]
+    public static void CreateLandingMenuObjects()
+    {
+        var controller = Object.FindFirstObjectByType<LandingMenu>();
+        if (controller == null)
+        {
+            var controllerObject = new GameObject("Landing Menu Controller");
+            Undo.RegisterCreatedObjectUndo(controllerObject, "Create Landing Menu Controller");
+            controller = controllerObject.AddComponent<LandingMenu>();
+        }
+
+        var existingMenu = controller.transform.Find("Landing Menu");
+        if (existingMenu != null)
+        {
+            Selection.activeGameObject = existingMenu.gameObject;
+            return;
+        }
+
+        var camera = Camera.main != null ? Camera.main : Object.FindFirstObjectByType<Camera>();
+        var canvasObject = new GameObject("Landing Menu");
+        Undo.RegisterCreatedObjectUndo(canvasObject, "Create Landing Menu");
+        canvasObject.transform.SetParent(controller.transform, false);
+
+        var canvas = canvasObject.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.WorldSpace;
+        canvas.worldCamera = camera;
+        canvasObject.AddComponent<TrackedDeviceGraphicRaycaster>();
+
+        var canvasRect = canvas.GetComponent<RectTransform>();
+        canvasRect.sizeDelta = new Vector2(1200f, 800f);
+        canvasObject.transform.localScale = Vector3.one * 0.001f;
+        if (camera != null)
+        {
+            var menuPosition = camera.transform.position + camera.transform.forward * 2f;
+            canvasObject.transform.SetPositionAndRotation(
+                menuPosition,
+                Quaternion.LookRotation(camera.transform.position - menuPosition, camera.transform.up));
+        }
+
+        var panel = CreateImage("Panel", canvasObject.transform, new Color(0.035f, 0.055f, 0.09f, 0.96f));
+        SetFullSize(panel.rectTransform);
+
+        var title = CreateText("PROJECTOR", panel.transform, 82, Color.white);
+        SetAnchors(title.rectTransform, new Vector2(0.1f, 0.68f), new Vector2(0.9f, 0.88f));
+
+        var button = CreateButton("HOST GAME", panel.transform);
+        SetAnchors(button.GetComponent<RectTransform>(), new Vector2(0.28f, 0.36f), new Vector2(0.72f, 0.54f));
+        UnityEventTools.AddPersistentListener(button.onClick, controller.HostGame);
+
+        var codeText = CreateText("", panel.transform, 64, new Color(1f, 0.8f, 0.3f));
+        SetAnchors(codeText.rectTransform, new Vector2(0.15f, 0.12f), new Vector2(0.85f, 0.27f));
+
+        SetPrivateReferences(controller, camera, codeText, canvasObject.transform);
+        EnsureEventSystem();
+        Selection.activeGameObject = canvasObject;
+        EditorSceneManager.MarkSceneDirty(canvasObject.scene);
+    }
+
+    static void SetPrivateReferences(LandingMenu controller, Camera camera, Text codeText, Transform menuRoot)
+    {
+        var serializedController = new SerializedObject(controller);
+        serializedController.FindProperty("targetCamera").objectReferenceValue = camera;
+        serializedController.FindProperty("codeText").objectReferenceValue = codeText;
+        serializedController.FindProperty("menuRoot").objectReferenceValue = menuRoot;
+        serializedController.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    static void EnsureEventSystem()
+    {
+        var eventSystem = EventSystem.current;
+        if (eventSystem == null)
+        {
+            var eventSystemObject = new GameObject("XR Event System");
+            Undo.RegisterCreatedObjectUndo(eventSystemObject, "Create XR Event System");
+            eventSystem = eventSystemObject.AddComponent<EventSystem>();
+        }
+
+        if (eventSystem.GetComponent<XRUIInputModule>() == null)
+            eventSystem.gameObject.AddComponent<XRUIInputModule>();
+    }
+
+    static Image CreateImage(string objectName, Transform parent, Color color)
+    {
+        var imageObject = new GameObject(objectName);
+        Undo.RegisterCreatedObjectUndo(imageObject, "Create Menu Image");
+        imageObject.transform.SetParent(parent, false);
+        var image = imageObject.AddComponent<Image>();
+        image.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+        image.type = Image.Type.Sliced;
+        image.color = color;
+        return image;
+    }
+
+    static Text CreateText(string value, Transform parent, int fontSize, Color color)
+    {
+        var textObject = new GameObject(string.IsNullOrEmpty(value) ? "Code" : value);
+        Undo.RegisterCreatedObjectUndo(textObject, "Create Menu Text");
+        textObject.transform.SetParent(parent, false);
+        var text = textObject.AddComponent<Text>();
+        text.text = value;
+        text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        text.horizontalOverflow = HorizontalWrapMode.Overflow;
+        text.verticalOverflow = VerticalWrapMode.Overflow;
+        text.fontSize = fontSize;
+        text.color = color;
+        text.alignment = TextAnchor.MiddleCenter;
+        text.raycastTarget = false;
+        return text;
+    }
+
+    static Button CreateButton(string label, Transform parent)
+    {
+        var buttonObject = new GameObject(label);
+        Undo.RegisterCreatedObjectUndo(buttonObject, "Create Menu Button");
+        buttonObject.transform.SetParent(parent, false);
+        var image = buttonObject.AddComponent<Image>();
+        image.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+        image.type = Image.Type.Sliced;
+        image.color = new Color(0.1f, 0.45f, 0.62f, 1f);
+        var button = buttonObject.AddComponent<Button>();
+        button.targetGraphic = image;
+
+        var text = CreateText(label, buttonObject.transform, 36, Color.white);
+        SetFullSize(text.rectTransform);
+        return button;
+    }
+
+    static void CreateDirectionalLight()
+    {
+        var lightObject = new GameObject("Directional Light");
+        Undo.RegisterCreatedObjectUndo(lightObject, "Create Directional Light");
+        lightObject.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+        var light = lightObject.AddComponent<Light>();
+        light.type = LightType.Directional;
+        light.intensity = 2f;
+    }
+
+    static void CreateFloor()
+    {
+        var floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        Undo.RegisterCreatedObjectUndo(floor, "Create XR Floor");
+        floor.name = "XR Floor";
+        floor.transform.position = new Vector3(0f, -0.1f, 0f);
+        floor.transform.localScale = new Vector3(20f, 0.2f, 20f);
+    }
+
+    static void SetFullSize(RectTransform rectTransform)
+    {
+        SetAnchors(rectTransform, Vector2.zero, Vector2.one);
+    }
+
+    static void SetAnchors(RectTransform rectTransform, Vector2 min, Vector2 max)
+    {
+        rectTransform.anchorMin = min;
+        rectTransform.anchorMax = max;
+        rectTransform.offsetMin = Vector2.zero;
+        rectTransform.offsetMax = Vector2.zero;
+    }
+}
