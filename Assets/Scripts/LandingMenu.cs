@@ -8,7 +8,9 @@ public class LandingMenu : MonoBehaviour
     [SerializeField] Camera targetCamera;
     [SerializeField] Transform menuRoot;
     [SerializeField] Transform hostMenuRoot;
+    [SerializeField] Transform joinMenuRoot;
     [SerializeField] HostMenu hostMenu;
+    [SerializeField] JoinMenu joinMenu;
 
     void Start()
     {
@@ -17,6 +19,7 @@ public class LandingMenu : MonoBehaviour
         EnsureMenuRoot();
         LockMenuToCamera();
         LockMenuToCamera(hostMenuRoot);
+        LockMenuToCamera(joinMenuRoot);
     }
 
     void LockMenuToCamera()
@@ -81,12 +84,28 @@ public class LandingMenu : MonoBehaviour
         }
 
         hostMenu.ShowCode();
-        menuRoot.gameObject.SetActive(false);
-        hostMenuRoot.gameObject.SetActive(true);
+        ShowMenu(hostMenuRoot);
     }
 
     public void JoinGameWithCode()
     {
-        Debug.Log("Join game with code selected.", this);
+        ShowMenu(joinMenuRoot);
+    }
+
+    public void JoinGameWithCode(string code)
+    {
+        Debug.Log($"Joining game with code {code}.", this);
+    }
+
+    public void BackToLanding()
+    {
+        ShowMenu(menuRoot);
+    }
+
+    void ShowMenu(Transform activeMenu)
+    {
+        menuRoot.gameObject.SetActive(activeMenu == menuRoot);
+        hostMenuRoot.gameObject.SetActive(activeMenu == hostMenuRoot);
+        joinMenuRoot.gameObject.SetActive(activeMenu == joinMenuRoot);
     }
 }

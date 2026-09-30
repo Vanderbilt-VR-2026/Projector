@@ -54,6 +54,10 @@ public static class LandingMenuBuilder
             if (existingHostMenu != null)
                 Undo.DestroyObjectImmediate(existingHostMenu.gameObject);
 
+            var existingJoinMenu = controller.transform.Find("Join Game Menu");
+            if (existingJoinMenu != null)
+                Undo.DestroyObjectImmediate(existingJoinMenu.gameObject);
+
             CreateLandingMenuObjects();
         }
 
@@ -77,7 +81,8 @@ public static class LandingMenuBuilder
 
         var existingMenu = controller.transform.Find("Landing Menu");
         var existingHostMenu = controller.transform.Find("Host Menu");
-        if (existingMenu != null && existingHostMenu != null)
+        var existingJoinMenu = controller.transform.Find("Join Game Menu");
+        if (existingMenu != null && existingHostMenu != null && existingJoinMenu != null)
         {
             Selection.activeGameObject = existingMenu.gameObject;
             return;
@@ -111,7 +116,32 @@ public static class LandingMenuBuilder
         SetAnchors(hostCodeText.rectTransform, new Vector2(0.15f, 0.65f), new Vector2(0.85f, 0.9f));
 
         var hostMenuController = hostMenu.AddComponent<HostMenu>();
-        SetPrivateReferences(controller, camera, landingMenu.transform, hostMenu.transform, hostMenuController, hostCodeText);
+        var hostBackButton = CreateButton("BACK", hostPanel.transform);
+        SetAnchors(hostBackButton.GetComponent<RectTransform>(), new Vector2(0.28f, 0.12f), new Vector2(0.72f, 0.27f));
+        UnityEventTools.AddPersistentListener(hostBackButton.onClick, controller.BackToLanding);
+
+        var joinMenu = CreateCanvas("Join Game Menu", controller.transform, camera);
+        joinMenu.gameObject.SetActive(false);
+        var joinPanel = CreateImage("Panel", joinMenu.transform, new Color(0.035f, 0.055f, 0.09f, 0.96f));
+        SetFullSize(joinPanel.rectTransform);
+
+        var joinTitle = CreateText("JOIN GAME", joinPanel.transform, 64, Color.white);
+        SetAnchors(joinTitle.rectTransform, new Vector2(0.1f, 0.72f), new Vector2(0.9f, 0.88f));
+
+        var codeInput = CreateInputField(joinPanel.transform);
+        SetAnchors(codeInput.GetComponent<RectTransform>(), new Vector2(0.15f, 0.48f), new Vector2(0.85f, 0.64f));
+
+        var submitButton = CreateButton("JOIN", joinPanel.transform);
+        SetAnchors(submitButton.GetComponent<RectTransform>(), new Vector2(0.28f, 0.3f), new Vector2(0.72f, 0.44f));
+
+        var joinMenuController = joinMenu.AddComponent<JoinMenu>();
+        UnityEventTools.AddPersistentListener(submitButton.onClick, joinMenuController.SubmitJoinCode);
+
+        var joinBackButton = CreateButton("BACK", joinPanel.transform);
+        SetAnchors(joinBackButton.GetComponent<RectTransform>(), new Vector2(0.28f, 0.12f), new Vector2(0.72f, 0.26f));
+        UnityEventTools.AddPersistentListener(joinBackButton.onClick, controller.BackToLanding);
+
+        SetPrivateReferences(controller, camera, landingMenu.transform, hostMenu.transform, joinMenu.transform, hostMenuController, hostCodeText, joinMenuController, codeInput);
         EnsureEventSystem();
         Selection.activeGameObject = landingMenu;
         EditorSceneManager.MarkSceneDirty(landingMenu.scene);
@@ -142,18 +172,25 @@ public static class LandingMenuBuilder
         return canvasObject;
     }
 
-    static void SetPrivateReferences(LandingMenu controller, Camera camera, Transform menuRoot, Transform hostMenuRoot, HostMenu hostMenu, Text hostCodeText)
+    static void SetPrivateReferences(LandingMenu controller, Camera camera, Transform menuRoot, Transform hostMenuRoot, Transform joinMenuRoot, HostMenu hostMenu, Text hostCodeText, JoinMenu joinMenu, InputField codeInput)
     {
         var serializedController = new SerializedObject(controller);
         serializedController.FindProperty("targetCamera").objectReferenceValue = camera;
         serializedController.FindProperty("menuRoot").objectReferenceValue = menuRoot;
         serializedController.FindProperty("hostMenuRoot").objectReferenceValue = hostMenuRoot;
+        serializedController.FindProperty("joinMenuRoot").objectReferenceValue = joinMenuRoot;
         serializedController.FindProperty("hostMenu").objectReferenceValue = hostMenu;
+        serializedController.FindProperty("joinMenu").objectReferenceValue = joinMenu;
         serializedController.ApplyModifiedPropertiesWithoutUndo();
 
         var serializedHostMenu = new SerializedObject(hostMenu);
         serializedHostMenu.FindProperty("codeText").objectReferenceValue = hostCodeText;
         serializedHostMenu.ApplyModifiedPropertiesWithoutUndo();
+
+        var serializedJoinMenu = new SerializedObject(joinMenu);
+        serializedJoinMenu.FindProperty("landingMenu").objectReferenceValue = controller;
+        serializedJoinMenu.FindProperty("codeInput").objectReferenceValue = codeInput;
+        serializedJoinMenu.ApplyModifiedPropertiesWithoutUndo();
     }
 
     static void EnsureEventSystem()
@@ -214,6 +251,24 @@ public static class LandingMenuBuilder
         var text = CreateText(label, buttonObject.transform, 36, Color.white);
         SetFullSize(text.rectTransform);
         return button;
+    }
+
+    static InputField CreateInputField(Transform parent)
+    {
+        var inputObject = CreateImage("Join Code Input", parent, Color.white).gameObject;
+        var inputField = inputObject.AddComponent<InputField>();
+        inputField.characterLimit = 6;
+        inputField.characterValidation = InputField.CharacterValidation.Alphanumeric;
+
+        var text = CreateText("", inputObject.transform, 42, Color.black);
+        SetFullSize(text.rectTransform);
+        text.alignment = TextAnchor.MiddleCenter;
+        inputField.textComponent = text;
+        var placeholder = CreateText("ENTER CODE", inputObject.transform, 34, new Color(0.35f, 0.35f, 0.35f));
+        SetFullSize(placeholder.rectTransform);
+        placeholder.alignment = TextAnchor.MiddleCenter;
+        inputField.placeholder = placeholder;
+        return inputField;
     }
 
     static void CreateDirectionalLight()
