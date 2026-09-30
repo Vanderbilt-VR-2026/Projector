@@ -50,8 +50,19 @@ public static class LandingMenuBuilder
             if (existingMenu != null)
                 Undo.DestroyObjectImmediate(existingMenu.gameObject);
 
+            var existingHostMenu = controller.transform.Find("Host Menu");
+            if (existingHostMenu != null)
+                Undo.DestroyObjectImmediate(existingHostMenu.gameObject);
+
             CreateLandingMenuObjects();
         }
+
+    public static void RebuildLandingMenuScene()
+    {
+        var scene = EditorSceneManager.OpenScene(LandingMenuScenePath, OpenSceneMode.Single);
+        RebuildLandingMenuObjects();
+        EditorSceneManager.SaveScene(scene, LandingMenuScenePath);
+    }
 
     [MenuItem("Projector/Create Landing Menu Objects")]
     public static void CreateLandingMenuObjects()
@@ -65,16 +76,52 @@ public static class LandingMenuBuilder
         }
 
         var existingMenu = controller.transform.Find("Landing Menu");
-        if (existingMenu != null)
+        var existingHostMenu = controller.transform.Find("Host Menu");
+        if (existingMenu != null && existingHostMenu != null)
         {
             Selection.activeGameObject = existingMenu.gameObject;
             return;
         }
 
         var camera = Camera.main != null ? Camera.main : Object.FindFirstObjectByType<Camera>();
-        var canvasObject = new GameObject("Landing Menu");
-        Undo.RegisterCreatedObjectUndo(canvasObject, "Create Landing Menu");
-        canvasObject.transform.SetParent(controller.transform, false);
+        var landingMenu = CreateCanvas("Landing Menu", controller.transform, camera);
+        var panel = CreateImage("Panel", landingMenu.transform, new Color(0.035f, 0.055f, 0.09f, 0.96f));
+        SetFullSize(panel.rectTransform);
+
+        var title = CreateText("PROJECTOR", panel.transform, 82, Color.white);
+        SetAnchors(title.rectTransform, new Vector2(0.1f, 0.68f), new Vector2(0.9f, 0.88f));
+
+        var button = CreateButton("HOST GAME", panel.transform);
+        SetAnchors(button.GetComponent<RectTransform>(), new Vector2(0.28f, 0.36f), new Vector2(0.72f, 0.54f));
+        UnityEventTools.AddPersistentListener(button.onClick, controller.HostGame);
+
+        var joinButton = CreateButton("JOIN GAME WITH CODE", panel.transform);
+        SetAnchors(joinButton.GetComponent<RectTransform>(), new Vector2(0.28f, 0.18f), new Vector2(0.72f, 0.36f));
+        UnityEventTools.AddPersistentListener(joinButton.onClick, controller.JoinGameWithCode);
+
+        var codeText = CreateText("", panel.transform, 64, new Color(1f, 0.8f, 0.3f));
+        SetAnchors(codeText.rectTransform, new Vector2(0.15f, 0.12f), new Vector2(0.85f, 0.27f));
+
+        var hostMenu = CreateCanvas("Host Menu", controller.transform, camera);
+        hostMenu.gameObject.SetActive(false);
+        var hostPanel = CreateImage("Panel", hostMenu.transform, new Color(0.035f, 0.055f, 0.09f, 0.96f));
+        SetFullSize(hostPanel.rectTransform);
+
+        var hostCodeText = CreateText("", hostPanel.transform, 64, new Color(1f, 0.8f, 0.3f));
+        SetAnchors(hostCodeText.rectTransform, new Vector2(0.15f, 0.65f), new Vector2(0.85f, 0.9f));
+
+        var hostMenuController = hostMenu.AddComponent<HostMenu>();
+        SetPrivateReferences(controller, camera, landingMenu.transform, hostMenu.transform, hostMenuController, hostCodeText);
+        EnsureEventSystem();
+        Selection.activeGameObject = landingMenu;
+        EditorSceneManager.MarkSceneDirty(landingMenu.scene);
+    }
+
+    static GameObject CreateCanvas(string objectName, Transform parent, Camera camera)
+    {
+        var canvasObject = new GameObject(objectName);
+        Undo.RegisterCreatedObjectUndo(canvasObject, "Create Menu Canvas");
+        canvasObject.transform.SetParent(parent, false);
 
         var canvas = canvasObject.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.WorldSpace;
@@ -92,32 +139,21 @@ public static class LandingMenuBuilder
                 Quaternion.LookRotation(camera.transform.position - menuPosition, camera.transform.up));
         }
 
-        var panel = CreateImage("Panel", canvasObject.transform, new Color(0.035f, 0.055f, 0.09f, 0.96f));
-        SetFullSize(panel.rectTransform);
-
-        var title = CreateText("PROJECTOR", panel.transform, 82, Color.white);
-        SetAnchors(title.rectTransform, new Vector2(0.1f, 0.68f), new Vector2(0.9f, 0.88f));
-
-        var button = CreateButton("HOST GAME", panel.transform);
-        SetAnchors(button.GetComponent<RectTransform>(), new Vector2(0.28f, 0.36f), new Vector2(0.72f, 0.54f));
-        UnityEventTools.AddPersistentListener(button.onClick, controller.HostGame);
-
-        var codeText = CreateText("", panel.transform, 64, new Color(1f, 0.8f, 0.3f));
-        SetAnchors(codeText.rectTransform, new Vector2(0.15f, 0.12f), new Vector2(0.85f, 0.27f));
-
-        SetPrivateReferences(controller, camera, codeText, canvasObject.transform);
-        EnsureEventSystem();
-        Selection.activeGameObject = canvasObject;
-        EditorSceneManager.MarkSceneDirty(canvasObject.scene);
+        return canvasObject;
     }
 
-    static void SetPrivateReferences(LandingMenu controller, Camera camera, Text codeText, Transform menuRoot)
+    static void SetPrivateReferences(LandingMenu controller, Camera camera, Transform menuRoot, Transform hostMenuRoot, HostMenu hostMenu, Text hostCodeText)
     {
         var serializedController = new SerializedObject(controller);
         serializedController.FindProperty("targetCamera").objectReferenceValue = camera;
-        serializedController.FindProperty("codeText").objectReferenceValue = codeText;
         serializedController.FindProperty("menuRoot").objectReferenceValue = menuRoot;
+        serializedController.FindProperty("hostMenuRoot").objectReferenceValue = hostMenuRoot;
+        serializedController.FindProperty("hostMenu").objectReferenceValue = hostMenu;
         serializedController.ApplyModifiedPropertiesWithoutUndo();
+
+        var serializedHostMenu = new SerializedObject(hostMenu);
+        serializedHostMenu.FindProperty("codeText").objectReferenceValue = hostCodeText;
+        serializedHostMenu.ApplyModifiedPropertiesWithoutUndo();
     }
 
     static void EnsureEventSystem()
