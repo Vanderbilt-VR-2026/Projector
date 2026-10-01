@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.XR.Interaction.Toolkit.Filtering;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
+using static Projector.Editor.SceneBuildUtility;
 
 namespace Projector.Editor
 {
@@ -13,7 +14,6 @@ namespace Projector.Editor
         private const string ScenePath = "Assets/Scenes/ProjectorRoom.unity";
         private const string GeneratedFolder = "Assets/Generated/QuestRoom";
         private const string FoodPackFolder = "Assets/ThirdParty/Quaternius/UltimateFoodPack";
-        private const string XrRigPath = "Assets/Samples/XR Interaction Toolkit/3.3.0/Hands Interaction Demo/Prefabs/XR Origin Hands (XR Rig).prefab";
 
         // The room starts just behind the player and runs forward, leaving open floor past the table for level building.
         private const float RoomBackZ = -4f;
@@ -299,77 +299,13 @@ namespace Projector.Editor
 
         private static void CreateXrRig()
         {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(XrRigPath);
-            if (prefab == null)
-                throw new MissingReferenceException("XR Origin prefab was not found at " + XrRigPath);
-
-            GameObject rig = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-            rig.name = "XR Origin - Quest 3 Hands and Controllers";
             // Spawn at the table's front edge so fruit is within arm's reach without leaving the Guardian boundary.
-            rig.transform.position = new Vector3(0f, 0f, -0.40f);
-            rig.transform.rotation = Quaternion.identity;
-
-            Camera camera = rig.GetComponentInChildren<Camera>(true);
-            if (camera != null)
-            {
-                camera.nearClipPlane = 0.08f;
-                camera.farClipPlane = 50f;
-                camera.clearFlags = CameraClearFlags.SolidColor;
-                camera.backgroundColor = new Color(0.06f, 0.065f, 0.075f);
-            }
-        }
-
-        private static GameObject CreateCube(string name, Transform parent, Vector3 localPosition, Vector3 localScale, Material material, bool collider)
-        {
-            GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.name = name;
-            go.transform.SetParent(parent);
-            go.transform.localPosition = localPosition;
-            go.transform.localScale = localScale;
-            go.GetComponent<MeshRenderer>().sharedMaterial = material;
-            if (!collider)
-                Object.DestroyImmediate(go.GetComponent<BoxCollider>());
-            return go;
-        }
-
-        private static GameObject CreateCylinder(string name, Transform parent, Vector3 localPosition, Vector3 localScale, Vector3 localEuler, Material material, bool collider)
-        {
-            GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            go.name = name;
-            go.transform.SetParent(parent);
-            go.transform.localPosition = localPosition;
-            go.transform.localEulerAngles = localEuler;
-            go.transform.localScale = localScale;
-            go.GetComponent<MeshRenderer>().sharedMaterial = material;
-            if (!collider)
-                Object.DestroyImmediate(go.GetComponent<CapsuleCollider>());
-            return go;
+            SceneBuildUtility.CreateXrRig("XR Origin - Quest 3 Hands and Controllers", new Vector3(0f, 0f, -0.40f), Quaternion.identity, new Color(0.06f, 0.065f, 0.075f));
         }
 
         private static Material CreateMaterial(string name, Color color, float smoothness, float metallic)
         {
-            string path = GeneratedFolder + "/" + name + ".mat";
-            AssetDatabase.DeleteAsset(path);
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            Material material = new Material(shader) { name = name };
-            material.SetColor("_BaseColor", color);
-            material.SetColor("_Color", color);
-            material.SetFloat("_Smoothness", smoothness);
-            material.SetFloat("_Metallic", metallic);
-            AssetDatabase.CreateAsset(material, path);
-            return material;
-        }
-
-        private static void EnsureFolder(string path)
-        {
-            if (AssetDatabase.IsValidFolder(path))
-                return;
-
-            int slash = path.LastIndexOf('/');
-            string parent = path.Substring(0, slash);
-            string child = path.Substring(slash + 1);
-            EnsureFolder(parent);
-            AssetDatabase.CreateFolder(parent, child);
+            return SceneBuildUtility.CreateMaterial(GeneratedFolder, name, color, smoothness, metallic);
         }
     }
 }
