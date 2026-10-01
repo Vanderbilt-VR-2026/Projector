@@ -5,34 +5,49 @@ using UnityEngine.XR.Interaction.Toolkit.UI;
 
 public class LandingMenu : MonoBehaviour
 {
-    const string CodeAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-
     [SerializeField] Camera targetCamera;
-    [SerializeField] Text codeText;
     [SerializeField] Transform menuRoot;
+    [SerializeField] Transform lobbyMenuRoot;
+    [SerializeField] Transform joinMenuRoot;
+    [SerializeField] Transform randomGameMenuRoot;
+    [SerializeField] GameFoundMenu lobbyMenu;
+    [SerializeField] JoinMenu joinMenu;
+    [SerializeField] RandomGameMenu randomGameMenu;
 
     void Start()
     {
         targetCamera = ResolveCamera();
         EnsureEventSystem();
+        EnsureMenuRoot();
         LockMenuToCamera();
+        LockMenuToCamera(lobbyMenuRoot);
+        LockMenuToCamera(joinMenuRoot);
+        LockMenuToCamera(randomGameMenuRoot);
     }
 
     void LockMenuToCamera()
     {
+        LockMenuToCamera(menuRoot);
+    }
+
+    void LockMenuToCamera(Transform root)
+    {
         if (targetCamera == null)
             return;
 
-        if (menuRoot == null)
-            menuRoot = transform.Find("Landing Menu");
-
-        if (menuRoot == null)
+        if (root == null)
             return;
 
-        menuRoot.SetParent(targetCamera.transform, false);
-        menuRoot.localPosition = new Vector3(0f, 0f, 2f);
-        menuRoot.localRotation = Quaternion.identity;
-        menuRoot.localScale = Vector3.one * 0.001f;
+        root.SetParent(targetCamera.transform, false);
+        root.localPosition = new Vector3(0f, 0f, 2f);
+        root.localRotation = Quaternion.identity;
+        root.localScale = Vector3.one * 0.001f;
+    }
+
+    void EnsureMenuRoot()
+    {
+        if (menuRoot == null)
+            menuRoot = transform.Find("Landing Menu");
     }
 
     Camera ResolveCamera()
@@ -63,18 +78,72 @@ public class LandingMenu : MonoBehaviour
             eventSystem.gameObject.AddComponent<XRUIInputModule>();
     }
 
-    public void HostGame()
+    public void HostPrivateGame()
     {
-        if (codeText == null)
+        HostGame(false);
+    }
+
+    public void HostPublicGame()
+    {
+        HostGame(true);
+    }
+
+    void HostGame(bool isPublic)
+    {
+        if (lobbyMenu == null || lobbyMenuRoot == null)
         {
-            Debug.LogWarning("LandingMenu requires a code text reference.", this);
+            Debug.LogWarning("LandingMenu requires a lobby menu reference.", this);
             return;
         }
 
-        var code = new char[6];
-        for (var index = 0; index < code.Length; index++)
-            code[index] = CodeAlphabet[UnityEngine.Random.Range(0, CodeAlphabet.Length)];
+        lobbyMenu.ShowCode(isPublic);
+        ShowMenu(lobbyMenuRoot);
+    }
 
-        codeText.text = new string(code);
+    public void JoinGameWithCode()
+    {
+        ShowMenu(joinMenuRoot);
+    }
+
+    public void JoinGameWithCode(string code)
+    {
+        Debug.Log($"Joining game with code {code}.", this);
+    }
+
+    public void JoinRandomGame()
+    {
+        if (randomGameMenu == null || randomGameMenuRoot == null)
+        {
+            Debug.LogWarning("LandingMenu requires a random game menu reference.", this);
+            return;
+        }
+
+        ShowMenu(randomGameMenuRoot);
+        randomGameMenu.BeginSearch();
+    }
+
+    public void ShowGameFoundMenu()
+    {
+        if (lobbyMenu == null || lobbyMenuRoot == null)
+        {
+            Debug.LogWarning("LandingMenu requires a lobby menu reference.", this);
+            return;
+        }
+
+        lobbyMenu.ShowGameFound();
+        ShowMenu(lobbyMenuRoot);
+    }
+
+    public void BackToLanding()
+    {
+        ShowMenu(menuRoot);
+    }
+
+    void ShowMenu(Transform activeMenu)
+    {
+        menuRoot.gameObject.SetActive(activeMenu == menuRoot);
+        lobbyMenuRoot.gameObject.SetActive(activeMenu == lobbyMenuRoot);
+        joinMenuRoot.gameObject.SetActive(activeMenu == joinMenuRoot);
+        randomGameMenuRoot.gameObject.SetActive(activeMenu == randomGameMenuRoot);
     }
 }
