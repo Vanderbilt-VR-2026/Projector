@@ -36,7 +36,6 @@ public class GameFoundMenu : MonoBehaviour
         ShowCode(false);
         players.Clear();
         AddPlayer("You");
-        AddPlayer("Waiting for players...");
     }
 
     public void AddPlayer(string playerName)
