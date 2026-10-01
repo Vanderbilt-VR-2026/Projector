@@ -314,7 +314,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c27ec916ddc7944f9a338dcdfc7e972b, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ProjectorGame.Lobby.ItemMock
+  m_EditorClassIdentifier: Assembly-CSharp::ProjectorGame.Items.ItemMock
   displayName: Plank
   category: 0
   gameplayNote: Long flat platform. Basic bridge piece.
