@@ -8,6 +8,20 @@ public class JoinMenu : MonoBehaviour
     [SerializeField] InputField codeInput;
     [SerializeField] LandingMenu landingMenu;
 
+    public void AddCharacter(string character)
+    {
+        if (codeInput == null || codeInput.text.Length >= JoinCodeLength)
+            return;
+
+        codeInput.text += character.ToUpperInvariant();
+    }
+
+    public void RemoveCharacter()
+    {
+        if (codeInput != null && codeInput.text.Length > 0)
+            codeInput.text = codeInput.text[..^1];
+    }
+
     public void SubmitJoinCode()
     {
         var code = codeInput != null ? codeInput.text.Trim().ToUpperInvariant() : string.Empty;
