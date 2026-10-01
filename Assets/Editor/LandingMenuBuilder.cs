@@ -126,8 +126,10 @@ public static class LandingMenuBuilder
         SetAnchors(randomButton.GetComponent<RectTransform>(), new Vector2(0.32f, 0.12f), new Vector2(0.68f, 0.25f));
         UnityEventTools.AddPersistentListener(randomButton.onClick, controller.JoinRandomGame);
 
-        var codeText = CreateText("", panel.transform, 64, new Color(1f, 0.8f, 0.3f));
-        SetAnchors(codeText.rectTransform, new Vector2(0.15f, 0.12f), new Vector2(0.85f, 0.27f));
+        // Status line under the buttons: "Creating game...", join errors.
+        var statusText = CreateText("", panel.transform, 34, new Color(1f, 0.8f, 0.3f));
+        statusText.gameObject.name = "Status";
+        SetAnchors(statusText.rectTransform, new Vector2(0.05f, 0.015f), new Vector2(0.95f, 0.1f));
 
         var lobbyMenu = CreateCanvas("Lobby Menu", controller.transform, camera);
         lobbyMenu.gameObject.SetActive(false);
@@ -191,6 +193,8 @@ public static class LandingMenuBuilder
         UnityEventTools.AddPersistentListener(joinBackButton.onClick, controller.BackToLanding);
 
         SetPrivateReferences(controller, camera, landingMenu.transform, joinMenu.transform, lobbyMenu.transform, randomGameMenu.transform, lobbyMenuController, lobbyCodeText, playerListText, joinMenuController, codeInput, randomGameMenuController);
+        SetReference(controller, "statusText", statusText);
+        SetReference(lobbyMenuController, "startButton", startGameButton);
         EnsureEventSystem();
         Selection.activeGameObject = landingMenu;
         EditorSceneManager.MarkSceneDirty(landingMenu.scene);
@@ -219,6 +223,13 @@ public static class LandingMenuBuilder
         }
 
         return canvasObject;
+    }
+
+    static void SetReference(Object target, string propertyName, Object value)
+    {
+        var serialized = new SerializedObject(target);
+        serialized.FindProperty(propertyName).objectReferenceValue = value;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
     }
 
     static void SetPrivateReferences(LandingMenu controller, Camera camera, Transform menuRoot, Transform joinMenuRoot, Transform lobbyMenuRoot, Transform randomGameMenuRoot, GameFoundMenu lobbyMenu, Text lobbyCodeText, Text playerListText, JoinMenu joinMenu, InputField codeInput, RandomGameMenu randomGameMenu)

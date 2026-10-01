@@ -1,25 +1,13 @@
-using System.Collections;
+using Projector.Networking;
 using UnityEngine;
 
+// JOIN RANDOM GAME: joins any open public game, or hosts a new public one if there isn't one.
 public class RandomGameMenu : MonoBehaviour
 {
     [SerializeField] LandingMenu landingMenu;
-    [SerializeField] float placeholderSearchDuration = 3f;
-
-    Coroutine searchRoutine;
 
     public void BeginSearch()
     {
-        if (searchRoutine != null)
-            StopCoroutine(searchRoutine);
-
-        searchRoutine = StartCoroutine(CompletePlaceholderSearch());
-    }
-
-    IEnumerator CompletePlaceholderSearch()
-    {
-        yield return new WaitForSeconds(placeholderSearchDuration);
-        searchRoutine = null;
-        landingMenu.ShowGameFoundMenu();
+        landingMenu.RunSessionTask("Looking for a game...", SessionService.QuickJoinAsync, "Could not find a game");
     }
 }

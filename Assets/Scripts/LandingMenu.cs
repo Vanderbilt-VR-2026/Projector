@@ -1,3 +1,6 @@
+using System;
+using System.Threading.Tasks;
+using Projector.Networking;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -13,6 +16,23 @@ public class LandingMenu : MonoBehaviour
     [SerializeField] GameFoundMenu lobbyMenu;
     [SerializeField] JoinMenu joinMenu;
     [SerializeField] RandomGameMenu randomGameMenu;
+    [SerializeField] Text statusText;
+
+    bool busy;
+    bool leaving;
+
+    void OnEnable() => SessionService.SessionChanged += OnSessionChanged;
+
+    void OnDisable() => SessionService.SessionChanged -= OnSessionChanged;
+
+    // The host closed the game while we were waiting on the game-found screen.
+    void OnSessionChanged()
+    {
+        if (SessionService.Current != null || leaving || lobbyMenuRoot == null || !lobbyMenuRoot.gameObject.activeSelf)
+            return;
+        ShowMenu(menuRoot);
+        SetStatus("The host closed the game.");
+    }
 
     void Start()
     {
@@ -88,6 +108,7 @@ public class LandingMenu : MonoBehaviour
         HostGame(true);
     }
 
+    // Creates a real session (public ones can be found by JOIN RANDOM GAME) and shows its code and players.
     void HostGame(bool isPublic)
     {
         if (lobbyMenu == null || lobbyMenuRoot == null)
@@ -96,8 +117,7 @@ public class LandingMenu : MonoBehaviour
             return;
         }
 
-        lobbyMenu.ShowCode(isPublic);
-        ShowMenu(lobbyMenuRoot);
+        RunSessionTask(isPublic ? "Creating public game..." : "Creating private game...", () => SessionService.HostAsync(isPrivate: !isPublic), "Could not host");
     }
 
     public void JoinGameWithCode()
@@ -107,7 +127,40 @@ public class LandingMenu : MonoBehaviour
 
     public void JoinGameWithCode(string code)
     {
-        Debug.Log($"Joining game with code {code}.", this);
+        BackToLanding();
+        RunSessionTask($"Joining {code}...", () => SessionService.JoinAsync(code), "Could not join");
+    }
+
+    // Shared by host / join / random: show progress, run the session call, then the game-found screen or the error.
+    public async void RunSessionTask(string progress, Func<Task> sessionCall, string failurePrefix)
+    {
+        if (busy)
+            return;
+
+        busy = true;
+        SetStatus(progress);
+        try
+        {
+            await sessionCall();
+            // If the host started while we were still connecting, we're already in the game and this menu is gone.
+            if (this == null)
+                return;
+            SetStatus("");
+            ShowGameFoundMenu();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception, this);
+            if (this == null)
+                return;
+            ShowMenu(menuRoot);
+            SetStatus($"{failurePrefix}: {exception.Message}");
+        }
+        finally
+        {
+            if (this != null)
+                busy = false;
+        }
     }
 
     public void JoinRandomGame()
@@ -130,13 +183,25 @@ public class LandingMenu : MonoBehaviour
             return;
         }
 
-        lobbyMenu.ShowGameFound();
         ShowMenu(lobbyMenuRoot);
+        lobbyMenu.ShowSession();
     }
 
-    public void BackToLanding()
+    // BACK from any sub-menu; leaving the game-found screen also leaves the session.
+    public async void BackToLanding()
     {
         ShowMenu(menuRoot);
+        if (SessionService.Current == null)
+            return;
+        leaving = true;
+        await SessionService.LeaveAsync();
+        leaving = false;
+    }
+
+    void SetStatus(string message)
+    {
+        if (statusText != null)
+            statusText.text = message;
     }
 
     void ShowMenu(Transform activeMenu)
