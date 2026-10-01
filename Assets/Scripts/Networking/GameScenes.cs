@@ -32,10 +32,12 @@ namespace Projector.Networking
             SceneManager.LoadScene(sceneName, LoadSceneMode.Single);
         }
 
+        // Back to the menu at once; the session is closed in the background.
         public static async void ReturnToLanding()
         {
-            await SessionService.LeaveAsync();
+            var leaving = SessionService.LeaveAsync();
             SceneManager.LoadScene(LandingMenu, LoadSceneMode.Single);
+            await leaving;
         }
     }
 }

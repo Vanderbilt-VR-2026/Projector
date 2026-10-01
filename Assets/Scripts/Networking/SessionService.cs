@@ -57,10 +57,15 @@ namespace Projector.Networking
             return Current;
         }
 
+        // Disconnects right away, then tells the session service (which can be slow or fail on a bad network;
+        // nothing waits on it to get the player back to the menu).
         public static async Task LeaveAsync()
         {
             var session = Current;
             Detach();
+
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
+                NetworkManager.Singleton.Shutdown();
 
             try
             {
@@ -76,9 +81,6 @@ namespace Projector.Networking
                 // The session may already be gone (host left first); there's nothing left to leave.
                 Debug.LogWarning($"Leaving session failed: {exception.Message}");
             }
-
-            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
-                NetworkManager.Singleton.Shutdown();
         }
 
         // Prefabs under Resources/NetworkPrefabs are registered on every peer so the host can spawn them.
@@ -171,9 +173,10 @@ namespace Projector.Networking
 
         static async void ReturnToMenuAfterDisconnect()
         {
-            await LeaveAsync();
+            var leaving = LeaveAsync();
             if (SceneManager.GetActiveScene().name != GameScenes.LandingMenu)
                 SceneManager.LoadScene(GameScenes.LandingMenu);
+            await leaving;
         }
 
         static void RaiseSessionChanged() => SessionChanged?.Invoke();

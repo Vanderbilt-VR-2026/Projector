@@ -66,7 +66,12 @@ public class Scoreboard : MonoBehaviour
         nameColumn.text = names.ToString();
         pointsColumn.text = points.ToString();
         timeColumn.text = times.ToString();
-        winnerText.text = ranked.Count > 0 ? $"WINNER: {ranked[0].playerName}" : "";
+        if (ranked.Count == 0)
+            winnerText.text = "";
+        else if (ranked.All(entry => entry.finishSeconds < 0f))
+            winnerText.text = "RACE STOPPED - NO FINISHERS";
+        else
+            winnerText.text = $"WINNER: {ranked[0].playerName}";
     }
 
     static string FormatTime(float seconds)

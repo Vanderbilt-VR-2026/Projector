@@ -397,6 +397,12 @@ namespace Projector.Editor
             Button project = CreateButton("PROJECT NOW", panel, 80);
             SetAnchors(project.GetComponent<RectTransform>(), new Vector2(0.08f, 0.07f), new Vector2(0.92f, 0.36f));
             UnityEventTools.AddPersistentListener(project.onClick, game.ProjectNow);
+            // Same big slot as PROJECT NOW; the host ignores it until the countdown is over, so a double pull on
+            // PROJECT NOW can't end the race it just started.
+            Button endRace = CreateButton("END RACE", panel, 80);
+            SetAnchors(endRace.GetComponent<RectTransform>(), new Vector2(0.08f, 0.07f), new Vector2(0.92f, 0.36f));
+            endRace.GetComponent<Image>().color = new Color(0.62f, 0.2f, 0.18f);
+            UnityEventTools.AddPersistentListener(endRace.onClick, game.EndRace);
             Button again = CreateButton("PLAY AGAIN", panel, 64);
             SetAnchors(again.GetComponent<RectTransform>(), new Vector2(0.06f, 0.07f), new Vector2(0.49f, 0.36f));
             UnityEventTools.AddPersistentListener(again.onClick, game.PlayAgain);
@@ -410,6 +416,7 @@ namespace Projector.Editor
             SetReference(game, "scoreboard", scoreboard);
             SetReference(game, "hudText", hud);
             SetReference(game, "projectButton", project.gameObject);
+            SetReference(game, "endRaceButton", endRace.gameObject);
             SetReference(game, "playAgainButton", again.gameObject);
             SetReference(game, "leaveButton", leave.gameObject);
             SetReferences(game, "viewingSpots", CreateViewingSpots(root.transform, capture));

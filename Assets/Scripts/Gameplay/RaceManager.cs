@@ -113,6 +113,15 @@ namespace Projector.Gameplay
             over.Value = false;
         }
 
+        // Host only: stop the race now; anyone who hasn't finished is a DNF. Ignored during the countdown.
+        public void EndNow()
+        {
+            if (!IsRunning)
+                return;
+            StopAllCoroutines();
+            EndRace();
+        }
+
         IEnumerator CountdownWhenRunnersArrive()
         {
             // Spawns reach clients within a round trip; a short beat keeps the countdown fair for everyone.

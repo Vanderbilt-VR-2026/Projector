@@ -21,6 +21,7 @@ namespace Projector.Gameplay
     //   Building - players hang props in the beam; the wall shows a live 2D projection of them.
     //   Racing   - PROJECT locks the shapes in as platforms and everyone races on the wall.
     //   Results  - the scoreboard is projected; the host can PLAY AGAIN (back to Building) or anyone can LEAVE.
+    // The host can also END RACE at any point in a race to go straight to results.
     public class ProjectorGame : NetworkBehaviour
     {
         const float PreviewInterval = 0.1f;
@@ -32,6 +33,7 @@ namespace Projector.Gameplay
         [SerializeField] Scoreboard scoreboard;
         [SerializeField] Text hudText;
         [SerializeField] GameObject projectButton;
+        [SerializeField] GameObject endRaceButton;
         [SerializeField] GameObject playAgainButton;
         [SerializeField] GameObject leaveButton;
         [SerializeField] XRBaseInteractable projectorButton;
@@ -83,6 +85,12 @@ namespace Projector.Gameplay
         {
             if (IsSpawned)
                 RequestPlayAgainRpc();
+        }
+
+        public void EndRace()
+        {
+            if (IsSpawned)
+                RequestEndRaceRpc();
         }
 
         public void Leave() => GameScenes.ReturnToLanding();
@@ -137,6 +145,13 @@ namespace Projector.Gameplay
                 return;
             race.ResetRace();
             StartBuilding();
+        }
+
+        [Rpc(SendTo.Server)]
+        void RequestEndRaceRpc(RpcParams rpcParams = default)
+        {
+            if (Phase.Value == GamePhase.Racing && rpcParams.Receive.SenderClientId == NetworkManager.ServerClientId)
+                race.EndNow();
         }
 
         void StartBuilding()
@@ -199,6 +214,7 @@ namespace Projector.Gameplay
             platforms.SetPreviewVisible(building);
             scoreboard.gameObject.SetActive(results);
             projectButton.SetActive(building);
+            endRaceButton.SetActive(racing && IsServer);
             playAgainButton.SetActive(results && IsServer);
             leaveButton.SetActive(results);
 
