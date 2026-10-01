@@ -1,18 +1,17 @@
-using Projector.Networking;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace Projector.Gameplay
 {
-    // A player's 2D racer. The owner simulates it (left thumbstick or A/D to run, A/X button or Space to jump)
+    // A player's racer on the projection stage. The owner simulates it (left thumbstick or A/D to run, A/X button or Space to jump)
     // and its owner-authority NetworkTransform shows it to everyone else. The owner reports coins, falls
     // and crossing the finish to the race manager.
     [RequireComponent(typeof(Rigidbody), typeof(CapsuleCollider))]
     public class RunnerController : NetworkBehaviour
     {
-        [SerializeField] float runSpeed = 5f;
-        [SerializeField] float jumpSpeed = 7f;
+        [SerializeField] float runSpeed = 6f;
+        [SerializeField] float jumpSpeed = 8.5f;
 
         Rigidbody body;
         CapsuleCollider capsule;
@@ -40,10 +39,10 @@ namespace Projector.Gameplay
             if (!IsOwner)
                 return;
 
-            // Start (and respawn) exactly on this slot's spawn point. A client's copy is created before Netcode
+            // Start (and respawn) exactly on this slot's start point. A client's copy is created before Netcode
             // places it, and the rigidbody would otherwise keep the creation pose.
             var slot = GetComponent<PlayerIdentity>().Slot.Value;
-            spawnPosition = PlayerSpawner.Current != null ? PlayerSpawner.Current.SpawnPoint(slot).position : transform.position;
+            spawnPosition = RaceManager.Current != null ? RaceManager.Current.StartPoint(slot) : transform.position;
             Respawn();
 
             move = new InputAction("Run", InputActionType.Value);
@@ -58,8 +57,6 @@ namespace Projector.Gameplay
             move.Enable();
             jump.Enable();
 
-            if (PlayerSpawner.Current != null)
-                PlayerSpawner.Current.PlaceLocalRig(slot);
         }
 
         public override void OnNetworkDespawn()
@@ -93,12 +90,13 @@ namespace Projector.Gameplay
             jumpQueued = false;
             body.linearVelocity = velocity;
 
-            if (transform.position.y < race.PitHeight)
+            var level = race.ToLevel(transform.position);
+            if (level.y < race.PitHeight)
             {
                 Respawn();
                 race.ReportFallRpc();
             }
-            else if (grounded && transform.position.x >= race.FinishX)
+            else if (grounded && level.x >= race.FinishX)
             {
                 finished = true;
                 race.ReportFinishRpc();

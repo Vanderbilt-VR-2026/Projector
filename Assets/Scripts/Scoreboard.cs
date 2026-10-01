@@ -2,12 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Projector.Networking;
 using UnityEngine;
 using UnityEngine.UI;
 
-// End-of-race results board. The race calls Show() with real results; with showMockOnStart it previews mock
-// entries instead (for the scene on its own). A negative finish time means the player did not finish.
+// End-of-race results, drawn on the projection. The game calls Show() with real results; with showMockOnStart
+// it previews mock entries instead. A negative finish time means the player did not finish.
 public class Scoreboard : MonoBehaviour
 {
     [Serializable]
@@ -32,18 +31,12 @@ public class Scoreboard : MonoBehaviour
         new Entry { playerName = "Player 4", points = 410, finishSeconds = 102.3f }
     };
 
+    // Only the mock preview is drawn here: the board is first shown when results arrive, and Start must not
+    // overwrite them.
     void Start()
     {
         if (showMockOnStart)
             ShowMockResults();
-        else
-            ShowWaiting("Race in progress...");
-    }
-
-    public void ShowWaiting(string message)
-    {
-        Show(Enumerable.Empty<Entry>());
-        winnerText.text = message;
     }
 
     public void ShowMockResults()
@@ -74,11 +67,6 @@ public class Scoreboard : MonoBehaviour
         pointsColumn.text = points.ToString();
         timeColumn.text = times.ToString();
         winnerText.text = ranked.Count > 0 ? $"WINNER: {ranked[0].playerName}" : "";
-    }
-
-    public void ReturnToMenu()
-    {
-        GameScenes.ReturnToLanding();
     }
 
     static string FormatTime(float seconds)

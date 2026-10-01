@@ -1,17 +1,17 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Projector.Networking;
 using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.XR.Interaction.Toolkit.Locomotion;
 
 namespace Projector.Gameplay
 {
-    // Runs the 2D race on the host: countdown, clock, finish order, and scoring. When everyone has finished
-    // (or time runs out) it sends the results to every player's scoreboard.
-    // Points: 1000 / 750 / 500 / 250 by finish place, +100 per coin, -50 per fall, never below 0.
+    // Runs the race on the projection stage, on the host: spawns a runner per player, counts down, keeps the
+    // clock, records finishes, coins and falls, and hands results to the game when everyone is done or time
+    // runs out. Points: 1000 / 750 / 500 / 250 by finish place, +100 per coin, -50 per fall, never below 0.
     public class RaceManager : NetworkBehaviour
     {
         static readonly int[] PlacePoints = { 1000, 750, 500, 250 };
@@ -39,12 +39,17 @@ namespace Projector.Gameplay
             public float? FinishSeconds;
         }
 
+        [SerializeField] NetworkObject runnerPrefab;
+        [Tooltip("The projection stage: level coordinates are this transform's local x/y.")]
+        [SerializeField] Transform stage;
+        [SerializeField] ProjectorGame game;
+        [Tooltip("Big countdown text drawn on the projection.")]
+        [SerializeField] Text banner;
         [SerializeField] float countdownSeconds = 3f;
         [SerializeField] float timeLimitSeconds = 90f;
+        [SerializeField] float startX = -8.5f;
         [SerializeField] float finishX = 7.2f;
         [SerializeField] float pitHeight = 1f;
-        [SerializeField] Text hudText;
-        [SerializeField] Scoreboard scoreboard;
 
         public static RaceManager Current { get; private set; }
 
@@ -54,21 +59,11 @@ namespace Projector.Gameplay
 
         public float FinishX => finishX;
         public float PitHeight => pitHeight;
-        public bool IsRunning => startTime.Value > 0 && Now >= startTime.Value && !over.Value;
+        public bool IsRunning => game.Phase.Value == GamePhase.Racing && startTime.Value > 0 && Now >= startTime.Value && !over.Value;
         float Elapsed => (float)(Now - startTime.Value);
         double Now => NetworkManager.ServerTime.Time;
 
-        public override void OnNetworkSpawn()
-        {
-            Current = this;
-
-            // The thumbstick drives the runner here, so the rig itself stays put.
-            foreach (var provider in FindObjectsByType<LocomotionProvider>(FindObjectsSortMode.None))
-                provider.enabled = false;
-
-            if (IsServer)
-                StartCoroutine(StartWhenRunnersArrive());
-        }
+        public override void OnNetworkSpawn() => Current = this;
 
         public override void OnNetworkDespawn()
         {
@@ -76,14 +71,52 @@ namespace Projector.Gameplay
                 Current = null;
         }
 
-        IEnumerator StartWhenRunnersArrive()
+        // Each slot lines up side by side on the start platform.
+        public Vector3 StartPoint(int slot) => stage.TransformPoint(new Vector3(startX + (slot - 1.5f) * 0.6f, 2.65f, 0f));
+
+        public Vector2 ToLevel(Vector3 world) => stage.InverseTransformPoint(world);
+
+        public string ClockText()
         {
-            var waited = 0f;
-            while (Runners().Count < NetworkManager.ConnectedClientsIds.Count && waited < 25f)
+            if (startTime.Value < 0 || Now < startTime.Value)
+                return "Get ready...";
+            if (over.Value)
+                return "Finished!";
+            var remaining = Mathf.Max(0f, timeLimitSeconds - Elapsed);
+            return $"Race to the gold platform!\n{(int)remaining / 60}:{(int)remaining % 60:00}";
+        }
+
+        // Host only.
+        public void BeginRace()
+        {
+            tallies.Clear();
+            over.Value = false;
+            startTime.Value = -1;
+            foreach (var clientId in NetworkManager.ConnectedClientsIds)
             {
-                waited += Time.deltaTime;
-                yield return null;
+                var slot = PlayerRoster.SlotFor(clientId);
+                var runner = Instantiate(runnerPrefab, StartPoint(slot), Quaternion.identity);
+                runner.GetComponent<PlayerIdentity>().Slot.Value = slot;
+                runner.SpawnWithOwnership(clientId, destroyWithScene: true);
             }
+            StartCoroutine(CountdownWhenRunnersArrive());
+        }
+
+        // Host only.
+        public void ResetRace()
+        {
+            StopAllCoroutines();
+            foreach (var runner in Runners())
+                runner.NetworkObject.Despawn(true);
+            tallies.Clear();
+            startTime.Value = -1;
+            over.Value = false;
+        }
+
+        IEnumerator CountdownWhenRunnersArrive()
+        {
+            // Spawns reach clients within a round trip; a short beat keeps the countdown fair for everyone.
+            yield return new WaitForSeconds(0.5f);
             startTime.Value = Now + countdownSeconds;
         }
 
@@ -92,16 +125,15 @@ namespace Projector.Gameplay
             if (!IsSpawned)
                 return;
 
-            if (over.Value)
-                hudText.text = "RACE OVER";
-            else if (startTime.Value < 0)
-                hudText.text = "GET READY";
-            else if (Now < startTime.Value)
-                hudText.text = Mathf.CeilToInt((float)(startTime.Value - Now)).ToString();
-            else
+            if (banner != null)
             {
-                var remaining = Mathf.Max(0f, timeLimitSeconds - Elapsed);
-                hudText.text = Elapsed < 1f ? "GO!" : $"{(int)remaining / 60}:{(int)remaining % 60:00}";
+                var racing = game.Phase.Value == GamePhase.Racing;
+                if (!racing || startTime.Value < 0 || over.Value)
+                    banner.text = "";
+                else if (Now < startTime.Value)
+                    banner.text = Mathf.CeilToInt((float)(startTime.Value - Now)).ToString();
+                else
+                    banner.text = Elapsed < 1f ? "GO!" : "";
             }
 
             if (IsServer && IsRunning && (Elapsed >= timeLimitSeconds || EveryoneFinished()))
@@ -157,18 +189,7 @@ namespace Projector.Gameplay
                     Seconds = tally.FinishSeconds ?? -1f
                 });
             }
-            ShowResultsRpc(results.ToArray());
-        }
-
-        [Rpc(SendTo.Everyone)]
-        void ShowResultsRpc(Result[] results)
-        {
-            scoreboard.Show(results.Select(result => new Scoreboard.Entry
-            {
-                playerName = result.Name.ToString(),
-                points = result.Points,
-                finishSeconds = result.Seconds
-            }));
+            game.ShowResults(results.ToArray());
         }
     }
 }

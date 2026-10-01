@@ -116,6 +116,26 @@ namespace Projector.Editor
             return material;
         }
 
+        // Flat color with no lighting, for the projected 2D look. Tint per renderer with _BaseColor.
+        public static Material CreateUnlitMaterial(string folder, string name, Color color)
+        {
+            EnsureFolder(folder);
+            string path = folder + "/" + name + ".mat";
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            bool isNew = material == null;
+            if (isNew)
+                material = new Material(shader) { name = name };
+            else
+                material.shader = shader;
+            material.SetColor("_BaseColor", color);
+            if (isNew)
+                AssetDatabase.CreateAsset(material, path);
+            else
+                EditorUtility.SetDirty(material);
+            return material;
+        }
+
         public static void EnsureFolder(string path)
         {
             if (AssetDatabase.IsValidFolder(path))
@@ -138,6 +158,11 @@ namespace Projector.Editor
             else
                 scenes.Add(entry);
             EditorBuildSettings.scenes = scenes.ToArray();
+        }
+
+        public static void RemoveSceneFromBuildSettings(string scenePath)
+        {
+            EditorBuildSettings.scenes = EditorBuildSettings.scenes.Where(s => s.path != scenePath).ToArray();
         }
 
         // ---------- XR rig ----------

@@ -16,6 +16,7 @@ namespace Projector.Editor
         public const string AvatarPath = Folder + "/Player Avatar.prefab";
         public const string RunnerPath = Folder + "/Runner.prefab";
         private const string GeneratedFolder = "Assets/Generated/Players";
+        private const string ProjectionFolder = "Assets/Generated/Projection";
 
         [MenuItem("Projector/Build Network Prefabs")]
         public static void BuildAll()
@@ -26,7 +27,7 @@ namespace Projector.Editor
             Material visor = CreateMaterial(GeneratedFolder, "PlayerVisor", new Color(0.05f, 0.06f, 0.08f), 0.8f, 0f);
 
             SaveNetworkPrefab(BuildAvatar(body, visor), AvatarPath);
-            SaveNetworkPrefab(BuildRunner(body, visor), RunnerPath);
+            SaveNetworkPrefab(BuildRunner(), RunnerPath);
         }
 
         // Head and hands, each following the owner's tracked pose, with a name label for everyone else.
@@ -57,12 +58,18 @@ namespace Projector.Editor
             return root;
         }
 
-        // A capsule locked to the z = 0 plane, simulated by its owner.
-        private static GameObject BuildRunner(Material body, Material visor)
+        // A capsule locked to the projection stage's z = 0 plane, simulated by its owner. It's drawn flat
+        // (unlit, filmed head-on by the orthographic projector camera) so it reads as a 2D character:
+        // player-colored body, dark outline behind it, light visor in front.
+        private static GameObject BuildRunner()
         {
-            var root = CreatePrimitive(PrimitiveType.Capsule, "Runner", null, Vector3.zero, Vector3.one * 0.4f, Vector3.zero, body, true);
-            var frictionless = CreateFrictionlessMaterial();
-            root.GetComponent<CapsuleCollider>().sharedMaterial = frictionless;
+            Material fill = CreateUnlitMaterial(ProjectionFolder, "RunnerFill", Color.white);
+            Material outline = CreateUnlitMaterial(ProjectionFolder, "RunnerOutline", new Color(0.06f, 0.06f, 0.08f));
+            Material visor = CreateUnlitMaterial(ProjectionFolder, "RunnerVisor", new Color(0.92f, 0.96f, 1f));
+
+            var root = CreatePrimitive(PrimitiveType.Capsule, "Runner", null, Vector3.zero, Vector3.one * 0.6f, Vector3.zero, fill, true);
+            root.GetComponent<CapsuleCollider>().sharedMaterial = CreateFrictionlessMaterial();
+            root.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
             var rigidbody = root.AddComponent<Rigidbody>();
             rigidbody.mass = 1f;
@@ -75,9 +82,10 @@ namespace Projector.Editor
             var identity = root.AddComponent<PlayerIdentity>();
             root.AddComponent<RunnerController>();
 
-            // Visor faces the viewer so the capsule reads as a character.
-            CreateCube("Visor", root.transform, new Vector3(0f, 0.45f, -0.4f), new Vector3(0.7f, 0.25f, 0.2f), visor, false);
-            var label = CreateNameLabel(root.transform, new Vector3(0f, 1.6f, 0f), 0.0015f / 0.4f);
+            // Larger copy just behind (farther from the camera) reads as an outline.
+            CreatePrimitive(PrimitiveType.Capsule, "Outline", root.transform, new Vector3(0f, 0f, 0.3f), Vector3.one * 1.22f, Vector3.zero, outline, false);
+            CreateCube("Visor", root.transform, new Vector3(0.12f, 0.42f, -0.6f), new Vector3(0.62f, 0.26f, 0.1f), visor, false);
+            var label = CreateNameLabel(root.transform, new Vector3(0f, 1.6f, 0f), 0.006f / 0.6f);
 
             SetReferences(identity, "tinted", new Object[] { root.GetComponent<Renderer>() });
             SetReference(identity, "nameLabel", label);

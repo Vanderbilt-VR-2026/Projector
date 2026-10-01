@@ -11,8 +11,9 @@ namespace Projector.Editor
         {
             NetworkPrefabsBuilder.BuildAll();
             LobbySceneBuilder.BuildScene();
-            Platformer2DSceneBuilder.BuildScene();
             ProjectorRoomGameplayBuilder.AddGameplay();
+            // The race used to be its own scene; it now plays on the projector wall.
+            SceneBuildUtility.RemoveSceneFromBuildSettings("Assets/Scenes/Platformer2D.unity");
             // Last, so the editor is left in the first scene of the game.
             LandingMenuBuilder.CreateLandingMenuScene();
         }
