@@ -142,18 +142,24 @@ public class LandingMenu : MonoBehaviour
         try
         {
             await sessionCall();
+            // If the host started while we were still connecting, we're already in the game and this menu is gone.
+            if (this == null)
+                return;
             SetStatus("");
             ShowGameFoundMenu();
         }
         catch (Exception exception)
         {
             Debug.LogException(exception, this);
+            if (this == null)
+                return;
             ShowMenu(menuRoot);
             SetStatus($"{failurePrefix}: {exception.Message}");
         }
         finally
         {
-            busy = false;
+            if (this != null)
+                busy = false;
         }
     }
 
