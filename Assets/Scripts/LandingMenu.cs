@@ -5,34 +5,46 @@ using UnityEngine.XR.Interaction.Toolkit.UI;
 
 public class LandingMenu : MonoBehaviour
 {
-    const string CodeAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-
     [SerializeField] Camera targetCamera;
-    [SerializeField] Text codeText;
     [SerializeField] Transform menuRoot;
+    [SerializeField] Transform hostMenuRoot;
+    [SerializeField] Transform joinMenuRoot;
+    [SerializeField] HostMenu hostMenu;
+    [SerializeField] JoinMenu joinMenu;
 
     void Start()
     {
         targetCamera = ResolveCamera();
         EnsureEventSystem();
+        EnsureMenuRoot();
         LockMenuToCamera();
+        LockMenuToCamera(hostMenuRoot);
+        LockMenuToCamera(joinMenuRoot);
     }
 
     void LockMenuToCamera()
     {
+        LockMenuToCamera(menuRoot);
+    }
+
+    void LockMenuToCamera(Transform root)
+    {
         if (targetCamera == null)
             return;
 
-        if (menuRoot == null)
-            menuRoot = transform.Find("Landing Menu");
-
-        if (menuRoot == null)
+        if (root == null)
             return;
 
-        menuRoot.SetParent(targetCamera.transform, false);
-        menuRoot.localPosition = new Vector3(0f, 0f, 2f);
-        menuRoot.localRotation = Quaternion.identity;
-        menuRoot.localScale = Vector3.one * 0.001f;
+        root.SetParent(targetCamera.transform, false);
+        root.localPosition = new Vector3(0f, 0f, 2f);
+        root.localRotation = Quaternion.identity;
+        root.localScale = Vector3.one * 0.001f;
+    }
+
+    void EnsureMenuRoot()
+    {
+        if (menuRoot == null)
+            menuRoot = transform.Find("Landing Menu");
     }
 
     Camera ResolveCamera()
@@ -65,16 +77,35 @@ public class LandingMenu : MonoBehaviour
 
     public void HostGame()
     {
-        if (codeText == null)
+        if (hostMenu == null || hostMenuRoot == null)
         {
-            Debug.LogWarning("LandingMenu requires a code text reference.", this);
+            Debug.LogWarning("LandingMenu requires a host menu reference.", this);
             return;
         }
 
-        var code = new char[6];
-        for (var index = 0; index < code.Length; index++)
-            code[index] = CodeAlphabet[UnityEngine.Random.Range(0, CodeAlphabet.Length)];
+        hostMenu.ShowCode();
+        ShowMenu(hostMenuRoot);
+    }
 
-        codeText.text = new string(code);
+    public void JoinGameWithCode()
+    {
+        ShowMenu(joinMenuRoot);
+    }
+
+    public void JoinGameWithCode(string code)
+    {
+        Debug.Log($"Joining game with code {code}.", this);
+    }
+
+    public void BackToLanding()
+    {
+        ShowMenu(menuRoot);
+    }
+
+    void ShowMenu(Transform activeMenu)
+    {
+        menuRoot.gameObject.SetActive(activeMenu == menuRoot);
+        hostMenuRoot.gameObject.SetActive(activeMenu == hostMenuRoot);
+        joinMenuRoot.gameObject.SetActive(activeMenu == joinMenuRoot);
     }
 }
