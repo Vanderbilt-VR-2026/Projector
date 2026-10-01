@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace ProjectorGame.Lobby
+namespace ProjectorGame.Items
 {
     public enum ItemCategory
     {
