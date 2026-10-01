@@ -117,7 +117,7 @@ public static class LandingMenuBuilder
 
         var hostMenuController = hostMenu.AddComponent<HostMenu>();
         var hostBackButton = CreateButton("BACK", hostPanel.transform);
-        SetAnchors(hostBackButton.GetComponent<RectTransform>(), new Vector2(0.28f, 0.12f), new Vector2(0.72f, 0.27f));
+        SetAnchors(hostBackButton.GetComponent<RectTransform>(), new Vector2(0.06f, 0.06f), new Vector2(0.24f, 0.15f));
         UnityEventTools.AddPersistentListener(hostBackButton.onClick, controller.BackToLanding);
 
         var joinMenu = CreateCanvas("Join Game Menu", controller.transform, camera);
@@ -126,19 +126,21 @@ public static class LandingMenuBuilder
         SetFullSize(joinPanel.rectTransform);
 
         var joinTitle = CreateText("JOIN GAME", joinPanel.transform, 64, Color.white);
-        SetAnchors(joinTitle.rectTransform, new Vector2(0.1f, 0.72f), new Vector2(0.9f, 0.88f));
+        SetAnchors(joinTitle.rectTransform, new Vector2(0.1f, 0.78f), new Vector2(0.9f, 0.92f));
 
         var codeInput = CreateInputField(joinPanel.transform);
-        SetAnchors(codeInput.GetComponent<RectTransform>(), new Vector2(0.15f, 0.48f), new Vector2(0.85f, 0.64f));
-
-        var submitButton = CreateButton("JOIN", joinPanel.transform);
-        SetAnchors(submitButton.GetComponent<RectTransform>(), new Vector2(0.28f, 0.3f), new Vector2(0.72f, 0.44f));
+        SetAnchors(codeInput.GetComponent<RectTransform>(), new Vector2(0.15f, 0.68f), new Vector2(0.85f, 0.77f));
 
         var joinMenuController = joinMenu.AddComponent<JoinMenu>();
+        CreateVirtualKeyboard(joinPanel.transform, joinMenuController);
+
+        var submitButton = CreateButton("JOIN", joinPanel.transform);
+        SetAnchors(submitButton.GetComponent<RectTransform>(), new Vector2(0.28f, 0.18f), new Vector2(0.72f, 0.27f));
+
         UnityEventTools.AddPersistentListener(submitButton.onClick, joinMenuController.SubmitJoinCode);
 
         var joinBackButton = CreateButton("BACK", joinPanel.transform);
-        SetAnchors(joinBackButton.GetComponent<RectTransform>(), new Vector2(0.28f, 0.12f), new Vector2(0.72f, 0.26f));
+        SetAnchors(joinBackButton.GetComponent<RectTransform>(), new Vector2(0.06f, 0.06f), new Vector2(0.24f, 0.15f));
         UnityEventTools.AddPersistentListener(joinBackButton.onClick, controller.BackToLanding);
 
         SetPrivateReferences(controller, camera, landingMenu.transform, hostMenu.transform, joinMenu.transform, hostMenuController, hostCodeText, joinMenuController, codeInput);
@@ -195,13 +197,17 @@ public static class LandingMenuBuilder
 
     static void EnsureEventSystem()
     {
-        var eventSystem = EventSystem.current;
+        var eventSystems = Object.FindObjectsByType<EventSystem>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        var eventSystem = eventSystems.Length > 0 ? eventSystems[0] : null;
         if (eventSystem == null)
         {
             var eventSystemObject = new GameObject("XR Event System");
             Undo.RegisterCreatedObjectUndo(eventSystemObject, "Create XR Event System");
             eventSystem = eventSystemObject.AddComponent<EventSystem>();
         }
+
+        for (var index = 1; index < eventSystems.Length; index++)
+            Undo.DestroyObjectImmediate(eventSystems[index].gameObject);
 
         if (eventSystem.GetComponent<XRUIInputModule>() == null)
             eventSystem.gameObject.AddComponent<XRUIInputModule>();
@@ -269,6 +275,44 @@ public static class LandingMenuBuilder
         placeholder.alignment = TextAnchor.MiddleCenter;
         inputField.placeholder = placeholder;
         return inputField;
+    }
+
+    static void CreateVirtualKeyboard(Transform parent, JoinMenu joinMenu)
+    {
+        const string keyValues = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        const int columns = 6;
+        const float left = 0.08f;
+        const float right = 0.92f;
+        const float bottom = 0.29f;
+        const float top = 0.65f;
+        var keyWidth = (right - left) / columns;
+        var keyHeight = (top - bottom) / 6f;
+
+        for (var index = 0; index < keyValues.Length; index++)
+        {
+            var keyButton = CreateButton(keyValues[index].ToString(), parent);
+            var row = index / columns;
+            var column = index % columns;
+            var min = new Vector2(left + column * keyWidth, top - (row + 1) * keyHeight);
+            var max = new Vector2(left + (column + 1) * keyWidth, top - row * keyHeight);
+            SetAnchors(keyButton.GetComponent<RectTransform>(), min, max);
+
+            var key = keyButton.gameObject.AddComponent<KeyboardKey>();
+            SetKeyboardKeyReference(key, joinMenu, keyValues[index].ToString());
+            UnityEventTools.AddPersistentListener(keyButton.onClick, key.Press);
+        }
+
+        var deleteButton = CreateButton("DEL", parent);
+        SetAnchors(deleteButton.GetComponent<RectTransform>(), new Vector2(0.08f, 0.18f), new Vector2(0.24f, 0.27f));
+        UnityEventTools.AddPersistentListener(deleteButton.onClick, joinMenu.RemoveCharacter);
+    }
+
+    static void SetKeyboardKeyReference(KeyboardKey key, JoinMenu joinMenu, string keyValue)
+    {
+        var serializedKey = new SerializedObject(key);
+        serializedKey.FindProperty("joinMenu").objectReferenceValue = joinMenu;
+        serializedKey.FindProperty("keyValue").stringValue = keyValue;
+        serializedKey.ApplyModifiedPropertiesWithoutUndo();
     }
 
     static void CreateDirectionalLight()
