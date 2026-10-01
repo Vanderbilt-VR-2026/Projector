@@ -6,7 +6,8 @@ using Projector.Networking;
 using UnityEngine;
 using UnityEngine.UI;
 
-// End-of-race results board. Shows mock entries until the race reports real results through Show().
+// End-of-race results board. The race calls Show() with real results; with showMockOnStart it previews mock
+// entries instead (for the scene on its own). A negative finish time means the player did not finish.
 public class Scoreboard : MonoBehaviour
 {
     [Serializable]
@@ -22,6 +23,7 @@ public class Scoreboard : MonoBehaviour
     [SerializeField] Text nameColumn;
     [SerializeField] Text pointsColumn;
     [SerializeField] Text timeColumn;
+    [SerializeField] bool showMockOnStart = true;
     [SerializeField] List<Entry> mockEntries = new List<Entry>
     {
         new Entry { playerName = "Player 1", points = 1250, finishSeconds = 74.2f },
@@ -32,7 +34,16 @@ public class Scoreboard : MonoBehaviour
 
     void Start()
     {
-        ShowMockResults();
+        if (showMockOnStart)
+            ShowMockResults();
+        else
+            ShowWaiting("Race in progress...");
+    }
+
+    public void ShowWaiting(string message)
+    {
+        Show(Enumerable.Empty<Entry>());
+        winnerText.text = message;
     }
 
     public void ShowMockResults()
@@ -40,10 +51,11 @@ public class Scoreboard : MonoBehaviour
         Show(mockEntries);
     }
 
-    // Most points wins; ties go to the faster finish.
+    // Most points wins; ties go to the faster finish, and finishers beat non-finishers.
     public void Show(IEnumerable<Entry> results)
     {
-        var ranked = results.OrderByDescending(entry => entry.points).ThenBy(entry => entry.finishSeconds).ToList();
+        var ranked = results.OrderByDescending(entry => entry.points)
+            .ThenBy(entry => entry.finishSeconds < 0f ? float.MaxValue : entry.finishSeconds).ToList();
 
         var ranks = new StringBuilder();
         var names = new StringBuilder();
@@ -71,6 +83,9 @@ public class Scoreboard : MonoBehaviour
 
     static string FormatTime(float seconds)
     {
+        if (seconds < 0f)
+            return "DNF";
+
         var time = TimeSpan.FromSeconds(seconds);
         return $"{(int)time.TotalMinutes}:{time.Seconds:00}.{time.Milliseconds / 10:00}";
     }

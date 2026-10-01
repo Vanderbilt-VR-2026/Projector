@@ -24,6 +24,21 @@ namespace Projector.Networking
 
         public static bool IsHost => Current == null || Current.IsHost;
 
+        // "QuietConvincingMop" from the generated "QuietConvincingMop#42487", or a fallback before sign-in.
+        public static string LocalPlayerName
+        {
+            get
+            {
+                var name = UnityServices.State == ServicesInitializationState.Initialized && AuthenticationService.Instance.IsSignedIn
+                    ? AuthenticationService.Instance.PlayerName
+                    : null;
+                if (string.IsNullOrEmpty(name))
+                    return "Player";
+                var hash = name.IndexOf('#');
+                return hash > 0 ? name.Substring(0, hash) : name;
+            }
+        }
+
         public static async Task<ISession> HostAsync()
         {
             await PrepareAsync();
@@ -49,17 +64,25 @@ namespace Projector.Networking
 
             try
             {
-                if (session != null)
+                // A departing host would hand the session to someone whose game has no server; close it instead
+                // so everyone else is sent back to the menu.
+                if (session != null && session.IsHost)
+                    await session.AsHost().DeleteAsync();
+                else if (session != null)
                     await session.LeaveAsync();
             }
-            catch (SessionException exception)
+            catch (Exception exception)
             {
+                // The session may already be gone (host left first); there's nothing left to leave.
                 Debug.LogWarning($"Leaving session failed: {exception.Message}");
             }
 
             if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
                 NetworkManager.Singleton.Shutdown();
         }
+
+        // Prefabs under Resources/NetworkPrefabs are registered on every peer so the host can spawn them.
+        public const string NetworkPrefabsFolder = "NetworkPrefabs";
 
         public static string GetDisplayName(IReadOnlyPlayer player, int index)
         {
@@ -85,7 +108,7 @@ namespace Projector.Networking
                 await AuthenticationService.Instance.GetPlayerNameAsync();
         }
 
-        static void EnsureNetworkManager()
+        public static void EnsureNetworkManager()
         {
             if (NetworkManager.Singleton != null)
                 return;
@@ -98,6 +121,15 @@ namespace Projector.Networking
             manager.NetworkConfig.NetworkTransport = transport;
             manager.NetworkConfig.EnableSceneManagement = true;
             manager.NetworkConfig.ConnectionApproval = false;
+            foreach (var prefab in Resources.LoadAll<NetworkObject>(NetworkPrefabsFolder))
+                manager.AddNetworkPrefab(prefab.gameObject);
+
+            // Losing the connection to the host (crash, network drop) ends the game for this player too.
+            manager.OnClientStopped += wasHost =>
+            {
+                if (!wasHost && Current != null)
+                    ReturnToMenuAfterDisconnect();
+            };
         }
 
         static void Attach(ISession session)
@@ -133,6 +165,13 @@ namespace Projector.Networking
             Detach();
             if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
                 NetworkManager.Singleton.Shutdown();
+            if (SceneManager.GetActiveScene().name != GameScenes.LandingMenu)
+                SceneManager.LoadScene(GameScenes.LandingMenu);
+        }
+
+        static async void ReturnToMenuAfterDisconnect()
+        {
+            await LeaveAsync();
             if (SceneManager.GetActiveScene().name != GameScenes.LandingMenu)
                 SceneManager.LoadScene(GameScenes.LandingMenu);
         }

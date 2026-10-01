@@ -1,3 +1,4 @@
+using Projector.Gameplay;
 using UnityEditor;
 using UnityEditor.Events;
 using UnityEditor.SceneManagement;
@@ -23,31 +24,33 @@ namespace Projector.Editor
             Material stand = CreateMaterial(GeneratedFolder, "DarkGray", new Color(0.12f, 0.13f, 0.14f), 0.3f, 0f);
 
             CreateRoomShell("Lobby Room", Vector3.zero, new Vector3(10f, 3.5f, 8f), walls, floor);
-            CreateSpawnPads();
+            Vector3[] pads = CreateSpawnPads();
             CreateDirectionalLight("Directional Light", Color.white, 1.2f, new Vector3(50f, -30f, 0f));
             SetFlatAmbient(new Color(0.55f, 0.56f, 0.6f));
 
             GameObject rig = SceneBuildUtility.CreateXrRig("XR Origin - Quest 3 Hands and Controllers", new Vector3(0f, 0f, -2.5f), Quaternion.identity, BackgroundColor);
             CreateLobbyBoard(stand, rig.GetComponentInChildren<Camera>(true));
+            CreatePlayerSpawner(NetworkPrefabsBuilder.AvatarPath, pads);
             EnsureEventSystem();
 
-            EditorSceneManager.SaveScene(scene, ScenePath);
-            AddSceneToBuildSettings(ScenePath);
+            SaveNetworkScene(scene, ScenePath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Debug.Log("Lobby scene created at " + ScenePath);
         }
 
-        // One colored pad per player slot, where players will stand once avatars are networked.
-        private static void CreateSpawnPads()
+        // One colored pad per player slot; each player's rig and avatar spawn on their own pad.
+        private static Vector3[] CreateSpawnPads()
         {
             GameObject root = new GameObject("Spawn Pads");
-            for (int i = 0; i < PlayerColors.Length; i++)
+            var positions = new Vector3[PlayerColors.All.Length];
+            for (int i = 0; i < PlayerColors.All.Length; i++)
             {
-                Material pad = CreateMaterial(GeneratedFolder, "Player" + (i + 1), PlayerColors[i], 0.2f, 0f);
-                float x = (i - (PlayerColors.Length - 1) / 2f) * 1.5f;
-                CreateCylinder("Pad " + (i + 1), root.transform, new Vector3(x, 0.01f, -1.5f), new Vector3(0.9f, 0.01f, 0.9f), Vector3.zero, pad, false);
+                Material pad = CreateMaterial(GeneratedFolder, "Player" + (i + 1), PlayerColors.All[i], 0.2f, 0f);
+                positions[i] = new Vector3((i - (PlayerColors.All.Length - 1) / 2f) * 1.5f, 0f, -1.5f);
+                CreateCylinder("Pad " + (i + 1), root.transform, positions[i] + Vector3.up * 0.01f, new Vector3(0.9f, 0.01f, 0.9f), Vector3.zero, pad, false);
             }
+            return positions;
         }
 
         private static void CreateLobbyBoard(Material standMaterial, Camera camera)
