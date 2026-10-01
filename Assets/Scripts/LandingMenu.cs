@@ -1,21 +1,32 @@
+using System;
+using Projector.Networking;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit.UI;
 
+// Room 1: the first thing a player sees. Host creates a session and takes everyone to the lobby;
+// Join takes a lobby code typed on the in-headset keypad.
 public class LandingMenu : MonoBehaviour
 {
-    const string CodeAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const int CodeLength = 6;
 
     [SerializeField] Camera targetCamera;
     [SerializeField] Text codeText;
+    [SerializeField] Text statusText;
     [SerializeField] Transform menuRoot;
+    [SerializeField] GameObject mainPanel;
+    [SerializeField] GameObject joinPanel;
+
+    string enteredCode = "";
+    bool busy;
 
     void Start()
     {
         targetCamera = ResolveCamera();
         EnsureEventSystem();
         LockMenuToCamera();
+        ShowMain();
     }
 
     void LockMenuToCamera()
@@ -63,18 +74,107 @@ public class LandingMenu : MonoBehaviour
             eventSystem.gameObject.AddComponent<XRUIInputModule>();
     }
 
-    public void HostGame()
+    public void ShowMain()
     {
-        if (codeText == null)
+        mainPanel.SetActive(true);
+        joinPanel.SetActive(false);
+        SetStatus("");
+    }
+
+    public void ShowJoin()
+    {
+        enteredCode = "";
+        RefreshCode();
+        mainPanel.SetActive(false);
+        joinPanel.SetActive(true);
+        SetStatus("");
+    }
+
+    public void AppendCodeCharacter(string character)
+    {
+        if (enteredCode.Length >= CodeLength)
+            return;
+
+        enteredCode += character;
+        RefreshCode();
+    }
+
+    public void DeleteCodeCharacter()
+    {
+        if (enteredCode.Length == 0)
+            return;
+
+        enteredCode = enteredCode.Substring(0, enteredCode.Length - 1);
+        RefreshCode();
+    }
+
+    public async void HostGame()
+    {
+        if (busy)
+            return;
+
+        busy = true;
+        SetStatus("Creating lobby...");
+        try
         {
-            Debug.LogWarning("LandingMenu requires a code text reference.", this);
+            await SessionService.HostAsync();
+            GameScenes.LoadForEveryone(GameScenes.Lobby);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception, this);
+            SetStatus("Could not host: " + exception.Message);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    // The host's scene sync moves us into the lobby once Netcode connects.
+    public async void JoinGame()
+    {
+        if (busy)
+            return;
+
+        if (enteredCode.Length != CodeLength)
+        {
+            SetStatus($"Enter the {CodeLength}-character lobby code.");
             return;
         }
 
-        var code = new char[6];
-        for (var index = 0; index < code.Length; index++)
-            code[index] = CodeAlphabet[UnityEngine.Random.Range(0, CodeAlphabet.Length)];
+        busy = true;
+        SetStatus($"Joining {enteredCode}...");
+        try
+        {
+            await SessionService.JoinAsync(enteredCode);
+            SetStatus("Joined. Loading lobby...");
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception, this);
+            SetStatus("Could not join: " + exception.Message);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
 
-        codeText.text = new string(code);
+    public void QuitGame()
+    {
+        Application.Quit();
+    }
+
+    void RefreshCode()
+    {
+        if (codeText != null)
+            codeText.text = enteredCode.PadRight(CodeLength, '_');
+    }
+
+    void SetStatus(string message)
+    {
+        if (statusText != null)
+            statusText.text = message;
     }
 }
