@@ -18,7 +18,7 @@ We are developing using XR Toolkit and ProBuilder, for Meta Oculus 3.
 
 | Team Member | Major(s) | Relevant Skills | Responsibilities | 
 | --- | --- | --- | --- |    
-| Jason Lee   | CS/Math  | Backend Development, C#, Python, React | tbd
+| Jason Lee   | CS/Math  | Backend Development, C#, Python, React | Backend + Github Management
 | Eileen Luo  | CS/Math  | Video editing, frontend, React, Python | Frontend + Communications
-| Franklin Udensi | CS/Cognitive Studies | UI, UX, Python | tbd
-| David Zaha | CS/Neuroscience | Backend Development, C#, Python, React | tbd
+| Franklin Udensi | CS/Cognitive Studies | UI, UX, Python | Frontend + Design Director
+| David Zaha | CS/Neuroscience | Backend Development, C#, Python, React | Backend + Asset Manager
