@@ -2,7 +2,7 @@ using UnityEditor;
 
 namespace Projector.Editor
 {
-    // Rebuilds the network prefabs and every scene in the game flow. The projector room itself isn't
+    // Rebuilds the network prefabs and the generated scenes in the game flow. The projector room itself isn't
     // rebuilt (that needs the local food pack); its gameplay objects are re-added in place.
     public static class GameFlowScenesBuilder
     {
@@ -10,12 +10,13 @@ namespace Projector.Editor
         public static void BuildAll()
         {
             NetworkPrefabsBuilder.BuildAll();
-            LobbySceneBuilder.BuildScene();
             ProjectorRoomGameplayBuilder.AddGameplay();
-            // The race used to be its own scene; it now plays on the projector wall.
+            // The waiting room is the landing menu's game-found screen, and the race plays on the projector wall.
+            SceneBuildUtility.RemoveSceneFromBuildSettings("Assets/Scenes/Lobby.unity");
             SceneBuildUtility.RemoveSceneFromBuildSettings("Assets/Scenes/Platformer2D.unity");
+            SceneBuildUtility.AddSceneToBuildSettings("Assets/Scenes/LandingMenu.unity", first: true);
             // Last, so the editor is left in the first scene of the game.
-            LandingMenuBuilder.CreateLandingMenuScene();
+            LandingMenuBuilder.RebuildLandingMenuScene();
         }
     }
 }

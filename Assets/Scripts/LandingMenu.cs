@@ -1,49 +1,73 @@
 using System;
+using System.Threading.Tasks;
 using Projector.Networking;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit.UI;
 
-// Room 1: the first thing a player sees. Host creates a session and takes everyone to the lobby;
-// Join takes a lobby code typed on the in-headset keypad.
 public class LandingMenu : MonoBehaviour
 {
-    const int CodeLength = 6;
-
     [SerializeField] Camera targetCamera;
-    [SerializeField] Text codeText;
-    [SerializeField] Text statusText;
     [SerializeField] Transform menuRoot;
-    [SerializeField] GameObject mainPanel;
-    [SerializeField] GameObject joinPanel;
+    [SerializeField] Transform lobbyMenuRoot;
+    [SerializeField] Transform joinMenuRoot;
+    [SerializeField] Transform randomGameMenuRoot;
+    [SerializeField] GameFoundMenu lobbyMenu;
+    [SerializeField] JoinMenu joinMenu;
+    [SerializeField] RandomGameMenu randomGameMenu;
+    [SerializeField] Text statusText;
 
-    string enteredCode = "";
     bool busy;
+    bool leaving;
+
+    void OnEnable() => SessionService.SessionChanged += OnSessionChanged;
+
+    void OnDisable() => SessionService.SessionChanged -= OnSessionChanged;
+
+    // The host closed the game while we were waiting on the game-found screen.
+    void OnSessionChanged()
+    {
+        if (SessionService.Current != null || leaving || lobbyMenuRoot == null || !lobbyMenuRoot.gameObject.activeSelf)
+            return;
+        ShowMenu(menuRoot);
+        SetStatus("The host closed the game.");
+    }
 
     void Start()
     {
         targetCamera = ResolveCamera();
         EnsureEventSystem();
+        EnsureMenuRoot();
         LockMenuToCamera();
-        ShowMain();
+        LockMenuToCamera(lobbyMenuRoot);
+        LockMenuToCamera(joinMenuRoot);
+        LockMenuToCamera(randomGameMenuRoot);
     }
 
     void LockMenuToCamera()
     {
+        LockMenuToCamera(menuRoot);
+    }
+
+    void LockMenuToCamera(Transform root)
+    {
         if (targetCamera == null)
             return;
 
-        if (menuRoot == null)
-            menuRoot = transform.Find("Landing Menu");
-
-        if (menuRoot == null)
+        if (root == null)
             return;
 
-        menuRoot.SetParent(targetCamera.transform, false);
-        menuRoot.localPosition = new Vector3(0f, 0f, 2f);
-        menuRoot.localRotation = Quaternion.identity;
-        menuRoot.localScale = Vector3.one * 0.001f;
+        root.SetParent(targetCamera.transform, false);
+        root.localPosition = new Vector3(0f, 0f, 2f);
+        root.localRotation = Quaternion.identity;
+        root.localScale = Vector3.one * 0.001f;
+    }
+
+    void EnsureMenuRoot()
+    {
+        if (menuRoot == null)
+            menuRoot = transform.Find("Landing Menu");
     }
 
     Camera ResolveCamera()
@@ -74,107 +98,117 @@ public class LandingMenu : MonoBehaviour
             eventSystem.gameObject.AddComponent<XRUIInputModule>();
     }
 
-    public void ShowMain()
+    public void HostPrivateGame()
     {
-        mainPanel.SetActive(true);
-        joinPanel.SetActive(false);
-        SetStatus("");
+        HostGame(false);
     }
 
-    public void ShowJoin()
+    public void HostPublicGame()
     {
-        enteredCode = "";
-        RefreshCode();
-        mainPanel.SetActive(false);
-        joinPanel.SetActive(true);
-        SetStatus("");
+        HostGame(true);
     }
 
-    public void AppendCodeCharacter(string character)
+    // Creates a real session (public ones can be found by JOIN RANDOM GAME) and shows its code and players.
+    void HostGame(bool isPublic)
     {
-        if (enteredCode.Length >= CodeLength)
+        if (lobbyMenu == null || lobbyMenuRoot == null)
+        {
+            Debug.LogWarning("LandingMenu requires a lobby menu reference.", this);
             return;
+        }
 
-        enteredCode += character;
-        RefreshCode();
+        RunSessionTask(isPublic ? "Creating public game..." : "Creating private game...", () => SessionService.HostAsync(isPrivate: !isPublic), "Could not host");
     }
 
-    public void DeleteCodeCharacter()
+    public void JoinGameWithCode()
     {
-        if (enteredCode.Length == 0)
-            return;
-
-        enteredCode = enteredCode.Substring(0, enteredCode.Length - 1);
-        RefreshCode();
+        ShowMenu(joinMenuRoot);
     }
 
-    public async void HostGame()
+    public void JoinGameWithCode(string code)
+    {
+        BackToLanding();
+        RunSessionTask($"Joining {code}...", () => SessionService.JoinAsync(code), "Could not join");
+    }
+
+    // Shared by host / join / random: show progress, run the session call, then the game-found screen or the error.
+    public async void RunSessionTask(string progress, Func<Task> sessionCall, string failurePrefix)
     {
         if (busy)
             return;
 
         busy = true;
-        SetStatus("Creating lobby...");
+        SetStatus(progress);
         try
         {
-            await SessionService.HostAsync();
-            GameScenes.LoadForEveryone(GameScenes.Lobby);
+            await sessionCall();
+            // If the host started while we were still connecting, we're already in the game and this menu is gone.
+            if (this == null)
+                return;
+            SetStatus("");
+            ShowGameFoundMenu();
         }
         catch (Exception exception)
         {
             Debug.LogException(exception, this);
-            SetStatus("Could not host: " + exception.Message);
+            if (this == null)
+                return;
+            ShowMenu(menuRoot);
+            SetStatus($"{failurePrefix}: {exception.Message}");
         }
         finally
         {
-            busy = false;
+            if (this != null)
+                busy = false;
         }
     }
 
-    // The host's scene sync moves us into the lobby once Netcode connects.
-    public async void JoinGame()
+    public void JoinRandomGame()
     {
-        if (busy)
-            return;
-
-        if (enteredCode.Length != CodeLength)
+        if (randomGameMenu == null || randomGameMenuRoot == null)
         {
-            SetStatus($"Enter the {CodeLength}-character lobby code.");
+            Debug.LogWarning("LandingMenu requires a random game menu reference.", this);
             return;
         }
 
-        busy = true;
-        SetStatus($"Joining {enteredCode}...");
-        try
-        {
-            await SessionService.JoinAsync(enteredCode);
-            SetStatus("Joined. Loading lobby...");
-        }
-        catch (Exception exception)
-        {
-            Debug.LogException(exception, this);
-            SetStatus("Could not join: " + exception.Message);
-        }
-        finally
-        {
-            busy = false;
-        }
+        ShowMenu(randomGameMenuRoot);
+        randomGameMenu.BeginSearch();
     }
 
-    public void QuitGame()
+    public void ShowGameFoundMenu()
     {
-        Application.Quit();
+        if (lobbyMenu == null || lobbyMenuRoot == null)
+        {
+            Debug.LogWarning("LandingMenu requires a lobby menu reference.", this);
+            return;
+        }
+
+        ShowMenu(lobbyMenuRoot);
+        lobbyMenu.ShowSession();
     }
 
-    void RefreshCode()
+    // BACK from any sub-menu; leaving the game-found screen also leaves the session.
+    public async void BackToLanding()
     {
-        if (codeText != null)
-            codeText.text = enteredCode.PadRight(CodeLength, '_');
+        ShowMenu(menuRoot);
+        if (SessionService.Current == null)
+            return;
+        leaving = true;
+        await SessionService.LeaveAsync();
+        leaving = false;
     }
 
     void SetStatus(string message)
     {
         if (statusText != null)
             statusText.text = message;
+    }
+
+    void ShowMenu(Transform activeMenu)
+    {
+        menuRoot.gameObject.SetActive(activeMenu == menuRoot);
+        lobbyMenuRoot.gameObject.SetActive(activeMenu == lobbyMenuRoot);
+        joinMenuRoot.gameObject.SetActive(activeMenu == joinMenuRoot);
+        randomGameMenuRoot.gameObject.SetActive(activeMenu == randomGameMenuRoot);
     }
 }

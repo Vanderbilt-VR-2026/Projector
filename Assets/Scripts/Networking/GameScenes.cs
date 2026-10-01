@@ -4,13 +4,12 @@ using UnityEngine.SceneManagement;
 
 namespace Projector.Networking
 {
-    // The game's scene flow: Landing Menu (room 1) -> Lobby -> Projector Room, where building and the projected
-    // 2D race both happen.
+    // The game's scene flow: Landing Menu (menus, including the pre-game screen) -> Projector Room, where
+    // building and the projected 2D race both happen.
     // Every scene here must be listed in the build settings so Netcode can sync it to clients.
     public static class GameScenes
     {
         public const string LandingMenu = "LandingMenu";
-        public const string Lobby = "Lobby";
         public const string ProjectorRoom = "ProjectorRoom";
 
         // On the host this moves every connected player; offline (scene opened directly in the editor) it loads locally.

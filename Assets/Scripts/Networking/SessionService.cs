@@ -39,13 +39,15 @@ namespace Projector.Networking
             }
         }
 
-        public static async Task<ISession> HostAsync()
+        // Private sessions are join-by-code only; public ones can also be found by QuickJoinAsync.
+        public static async Task<ISession> HostAsync(bool isPrivate = true)
         {
             await PrepareAsync();
-            var options = new SessionOptions { MaxPlayers = MaxPlayers, IsPrivate = true }
+            var options = new SessionOptions { MaxPlayers = MaxPlayers, IsPrivate = isPrivate }
                 .WithPlayerName()
                 .WithRelayNetwork();
             Attach(await MultiplayerService.Instance.CreateSessionAsync(options));
+            KeepClientScenesOnJoin();
             return Current;
         }
 
@@ -54,6 +56,20 @@ namespace Projector.Networking
             await PrepareAsync();
             var options = new JoinSessionOptions().WithPlayerName();
             Attach(await MultiplayerService.Instance.JoinSessionByCodeAsync(code.Trim().ToUpperInvariant(), options));
+            return Current;
+        }
+
+        // Joins any open public session, or hosts a new public one when there's none to join.
+        public static async Task<ISession> QuickJoinAsync()
+        {
+            await PrepareAsync();
+            var quickJoin = new QuickJoinOptions { CreateSession = true, Timeout = TimeSpan.FromSeconds(5) };
+            var options = new SessionOptions { MaxPlayers = MaxPlayers, IsPrivate = false }
+                .WithPlayerName()
+                .WithRelayNetwork();
+            Attach(await MultiplayerService.Instance.MatchmakeSessionAsync(quickJoin, options));
+            if (Current.IsHost)
+                KeepClientScenesOnJoin();
             return Current;
         }
 
@@ -85,6 +101,15 @@ namespace Projector.Networking
 
         // Prefabs under Resources/NetworkPrefabs are registered on every peer so the host can spawn them.
         public const string NetworkPrefabsFolder = "NetworkPrefabs";
+
+        // Players join from the menu scene the host is also in. Netcode would normally reload it on the joining
+        // client (resetting its menus); additive client sync keeps the already-loaded scene instead.
+        static void KeepClientScenesOnJoin()
+        {
+            var manager = NetworkManager.Singleton;
+            if (manager != null && manager.IsServer && manager.SceneManager != null)
+                manager.SceneManager.SetClientSynchronizationMode(LoadSceneMode.Additive);
+        }
 
         public static string GetDisplayName(IReadOnlyPlayer player, int index)
         {

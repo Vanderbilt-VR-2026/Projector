@@ -384,30 +384,31 @@ namespace Projector.Editor
             ProjectorGame game = root.AddComponent<ProjectorGame>();
             RaceManager race = root.AddComponent<RaceManager>();
 
-            // Beside the screen (there's no room above it under the ceiling), facing into the room.
+            // Beside the screen's left edge (no room above it under the ceiling): the side nearest the table and
+            // the viewing spots, so the buttons stay easy to hit with a controller ray. Facing into the room.
             Rect screen = capture.Screen;
-            Canvas canvas = CreateWorldCanvas("Projector HUD", root.transform, new Vector2(1400f, 1000f), null);
-            canvas.transform.localScale = Vector3.one * 0.0013f;
-            canvas.transform.SetPositionAndRotation(new Vector3(capture.WallX + 0.04f, screen.center.y, screen.xMax + 0.15f + 0.91f), Quaternion.LookRotation(Vector3.left));
+            Canvas canvas = CreateWorldCanvas("Projector HUD", root.transform, new Vector2(1000f, 1100f), null);
+            canvas.transform.localScale = Vector3.one * 0.0012f;
+            canvas.transform.SetPositionAndRotation(new Vector3(capture.WallX + 0.04f, screen.center.y, screen.xMin - 0.12f - 0.6f), Quaternion.LookRotation(Vector3.left));
 
             var panel = CreatePanel("Panel", canvas.transform);
-            Text hud = CreateText("", panel, 104, Color.white, "Status");
+            Text hud = CreateText("", panel, 84, Color.white, "Status");
             hud.horizontalOverflow = HorizontalWrapMode.Wrap;
-            SetAnchors(hud.rectTransform, new Vector2(0.04f, 0.42f), new Vector2(0.96f, 0.96f));
+            SetAnchors(hud.rectTransform, new Vector2(0.05f, 0.4f), new Vector2(0.95f, 0.96f));
             Button project = CreateButton("PROJECT NOW", panel, 80);
-            SetAnchors(project.GetComponent<RectTransform>(), new Vector2(0.08f, 0.07f), new Vector2(0.92f, 0.36f));
+            SetAnchors(project.GetComponent<RectTransform>(), new Vector2(0.06f, 0.05f), new Vector2(0.94f, 0.35f));
             UnityEventTools.AddPersistentListener(project.onClick, game.ProjectNow);
-            // Same big slot as PROJECT NOW; the host ignores it until the countdown is over, so a double pull on
+            // Same slot as PROJECT NOW; the host ignores it until the countdown is over, so a double pull on
             // PROJECT NOW can't end the race it just started.
             Button endRace = CreateButton("END RACE", panel, 80);
-            SetAnchors(endRace.GetComponent<RectTransform>(), new Vector2(0.08f, 0.07f), new Vector2(0.92f, 0.36f));
+            SetAnchors(endRace.GetComponent<RectTransform>(), new Vector2(0.06f, 0.05f), new Vector2(0.94f, 0.35f));
             endRace.GetComponent<Image>().color = new Color(0.62f, 0.2f, 0.18f);
             UnityEventTools.AddPersistentListener(endRace.onClick, game.EndRace);
             Button again = CreateButton("PLAY AGAIN", panel, 64);
-            SetAnchors(again.GetComponent<RectTransform>(), new Vector2(0.06f, 0.07f), new Vector2(0.49f, 0.36f));
+            SetAnchors(again.GetComponent<RectTransform>(), new Vector2(0.04f, 0.05f), new Vector2(0.49f, 0.35f));
             UnityEventTools.AddPersistentListener(again.onClick, game.PlayAgain);
             Button leave = CreateButton("LEAVE", panel, 64);
-            SetAnchors(leave.GetComponent<RectTransform>(), new Vector2(0.51f, 0.07f), new Vector2(0.94f, 0.36f));
+            SetAnchors(leave.GetComponent<RectTransform>(), new Vector2(0.51f, 0.05f), new Vector2(0.96f, 0.35f));
             UnityEventTools.AddPersistentListener(leave.onClick, game.Leave);
 
             SetReference(game, "capture", capture);
