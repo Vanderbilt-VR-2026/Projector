@@ -2,16 +2,17 @@ using UnityEditor;
 
 namespace Projector.Editor
 {
-    // Rebuilds every scene in the multiplayer flow except the Projector Room, which needs the local food pack.
+    // Rebuilds the generated scenes in the game flow except the Projector Room, which needs the local food pack.
     public static class GameFlowScenesBuilder
     {
-        [MenuItem("Projector/Build Menu, Lobby and 2D Scenes")]
+        [MenuItem("Projector/Build Menu and 2D Scenes")]
         public static void BuildAll()
         {
-            LobbySceneBuilder.BuildScene();
             Platformer2DSceneBuilder.BuildScene();
+            SceneBuildUtility.RemoveSceneFromBuildSettings("Assets/Scenes/Lobby.unity");
+            SceneBuildUtility.AddSceneToBuildSettings("Assets/Scenes/LandingMenu.unity", first: true);
             // Last, so the editor is left in the first scene of the game.
-            LandingMenuBuilder.CreateLandingMenuScene();
+            LandingMenuBuilder.RebuildLandingMenuScene();
         }
     }
 }

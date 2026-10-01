@@ -143,6 +143,11 @@ namespace Projector.Editor
             EditorBuildSettings.scenes = scenes.ToArray();
         }
 
+        public static void RemoveSceneFromBuildSettings(string scenePath)
+        {
+            EditorBuildSettings.scenes = EditorBuildSettings.scenes.Where(s => s.path != scenePath).ToArray();
+        }
+
         // ---------- XR rig ----------
 
         public static GameObject CreateXrRig(string name, Vector3 position, Quaternion rotation, Color background)

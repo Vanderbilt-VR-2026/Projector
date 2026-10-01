@@ -24,13 +24,15 @@ namespace Projector.Networking
 
         public static bool IsHost => Current == null || Current.IsHost;
 
-        public static async Task<ISession> HostAsync()
+        // Private sessions are join-by-code only; public ones can also be found by QuickJoinAsync.
+        public static async Task<ISession> HostAsync(bool isPrivate = true)
         {
             await PrepareAsync();
-            var options = new SessionOptions { MaxPlayers = MaxPlayers, IsPrivate = true }
+            var options = new SessionOptions { MaxPlayers = MaxPlayers, IsPrivate = isPrivate }
                 .WithPlayerName()
                 .WithRelayNetwork();
             Attach(await MultiplayerService.Instance.CreateSessionAsync(options));
+            KeepClientScenesOnJoin();
             return Current;
         }
 
@@ -42,23 +44,53 @@ namespace Projector.Networking
             return Current;
         }
 
+        // Joins any open public session, or hosts a new public one when there's none to join.
+        public static async Task<ISession> QuickJoinAsync()
+        {
+            await PrepareAsync();
+            var quickJoin = new QuickJoinOptions { CreateSession = true, Timeout = TimeSpan.FromSeconds(5) };
+            var options = new SessionOptions { MaxPlayers = MaxPlayers, IsPrivate = false }
+                .WithPlayerName()
+                .WithRelayNetwork();
+            Attach(await MultiplayerService.Instance.MatchmakeSessionAsync(quickJoin, options));
+            if (Current.IsHost)
+                KeepClientScenesOnJoin();
+            return Current;
+        }
+
+        // Disconnects right away, then tells the session service (which can be slow or fail on a bad network;
+        // nothing waits on it to get the player back to the menu).
         public static async Task LeaveAsync()
         {
             var session = Current;
             Detach();
 
-            try
-            {
-                if (session != null)
-                    await session.LeaveAsync();
-            }
-            catch (SessionException exception)
-            {
-                Debug.LogWarning($"Leaving session failed: {exception.Message}");
-            }
-
             if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
                 NetworkManager.Singleton.Shutdown();
+
+            try
+            {
+                // A departing host would hand the session to someone whose game has no server; close it instead
+                // so everyone else is sent back to the menu.
+                if (session != null && session.IsHost)
+                    await session.AsHost().DeleteAsync();
+                else if (session != null)
+                    await session.LeaveAsync();
+            }
+            catch (Exception exception)
+            {
+                // The session may already be gone (host left first); there's nothing left to leave.
+                Debug.LogWarning($"Leaving session failed: {exception.Message}");
+            }
+        }
+
+        // Players join from the menu scene the host is also in. Netcode would normally reload it on the joining
+        // client (resetting its menus); additive client sync keeps the already-loaded scene instead.
+        static void KeepClientScenesOnJoin()
+        {
+            var manager = NetworkManager.Singleton;
+            if (manager != null && manager.IsServer && manager.SceneManager != null)
+                manager.SceneManager.SetClientSynchronizationMode(LoadSceneMode.Additive);
         }
 
         public static string GetDisplayName(IReadOnlyPlayer player, int index)
@@ -98,6 +130,13 @@ namespace Projector.Networking
             manager.NetworkConfig.NetworkTransport = transport;
             manager.NetworkConfig.EnableSceneManagement = true;
             manager.NetworkConfig.ConnectionApproval = false;
+
+            // Losing the connection to the host (crash, network drop) ends the game for this player too.
+            manager.OnClientStopped += wasHost =>
+            {
+                if (!wasHost && Current != null)
+                    ReturnToMenuAfterDisconnect();
+            };
         }
 
         static void Attach(ISession session)
@@ -135,6 +174,14 @@ namespace Projector.Networking
                 NetworkManager.Singleton.Shutdown();
             if (SceneManager.GetActiveScene().name != GameScenes.LandingMenu)
                 SceneManager.LoadScene(GameScenes.LandingMenu);
+        }
+
+        static async void ReturnToMenuAfterDisconnect()
+        {
+            var leaving = LeaveAsync();
+            if (SceneManager.GetActiveScene().name != GameScenes.LandingMenu)
+                SceneManager.LoadScene(GameScenes.LandingMenu);
+            await leaving;
         }
 
         static void RaiseSessionChanged() => SessionChanged?.Invoke();
