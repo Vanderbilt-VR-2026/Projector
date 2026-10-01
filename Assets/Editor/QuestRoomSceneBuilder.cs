@@ -300,7 +300,7 @@ namespace Projector.Editor
         private static void CreateXrRig()
         {
             // Spawn at the table's front edge so fruit is within arm's reach without leaving the Guardian boundary.
-            SceneBuildUtility.CreateXrRig("XR Origin - Quest 3 Hands and Controllers", new Vector3(0f, 0f, -0.40f), Quaternion.identity, new Color(0.06f, 0.065f, 0.075f));
+            SceneBuildUtility.CreateXrRig("XR Origin - Quest 3 Hands and Controllers", new Vector3(0f, 0f, -0.40f), Quaternion.identity, BackgroundColor);
         }
 
         private static Material CreateMaterial(string name, Color color, float smoothness, float metallic)

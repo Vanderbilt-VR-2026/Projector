@@ -16,6 +16,16 @@ namespace Projector.Editor
         public static readonly Color PanelColor = new Color(0.035f, 0.055f, 0.09f, 0.96f);
         public static readonly Color ButtonColor = new Color(0.1f, 0.45f, 0.62f, 1f);
         public static readonly Color AccentColor = new Color(1f, 0.8f, 0.3f);
+        public static readonly Color BackgroundColor = new Color(0.06f, 0.065f, 0.075f);
+
+        // One color per player slot (SessionService.MaxPlayers), shared by lobby pads and 2D avatar dummies.
+        public static readonly Color[] PlayerColors =
+        {
+            new Color(0.86f, 0.24f, 0.22f),
+            new Color(0.22f, 0.45f, 0.88f),
+            new Color(0.25f, 0.72f, 0.33f),
+            new Color(0.95f, 0.78f, 0.2f)
+        };
 
         // ---------- Geometry ----------
 
@@ -84,18 +94,28 @@ namespace Projector.Editor
 
         // ---------- Assets ----------
 
+        // Updates an existing material in place so its GUID (and every scene that references it) survives a rebuild.
         public static Material CreateMaterial(string folder, string name, Color color, float smoothness, float metallic)
         {
             EnsureFolder(folder);
             string path = folder + "/" + name + ".mat";
-            AssetDatabase.DeleteAsset(path);
             Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            Material material = new Material(shader) { name = name };
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            bool isNew = material == null;
+            if (isNew)
+                material = new Material(shader) { name = name };
+            else
+                material.shader = shader;
+
             material.SetColor("_BaseColor", color);
             material.SetColor("_Color", color);
             material.SetFloat("_Smoothness", smoothness);
             material.SetFloat("_Metallic", metallic);
-            AssetDatabase.CreateAsset(material, path);
+
+            if (isNew)
+                AssetDatabase.CreateAsset(material, path);
+            else
+                EditorUtility.SetDirty(material);
             return material;
         }
 

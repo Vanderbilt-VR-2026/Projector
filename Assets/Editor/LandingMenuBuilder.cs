@@ -26,7 +26,7 @@ public static class LandingMenuBuilder
         CreateDirectionalLight("Directional Light", Color.white, 1.2f, new Vector3(50f, -30f, 0f));
         SetFlatAmbient(new Color(0.55f, 0.56f, 0.6f));
 
-        SceneBuildUtility.CreateXrRig("XR Origin - Quest 3 Hands and Controllers", Vector3.zero, Quaternion.identity, new Color(0.06f, 0.065f, 0.075f));
+        SceneBuildUtility.CreateXrRig("XR Origin - Quest 3 Hands and Controllers", Vector3.zero, Quaternion.identity, BackgroundColor);
         CreateLandingMenuObjects();
 
         EditorSceneManager.SaveScene(scene, LandingMenuScenePath);
