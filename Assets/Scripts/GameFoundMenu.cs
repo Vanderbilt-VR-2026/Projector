@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class HostMenu : MonoBehaviour
+public class GameFoundMenu : MonoBehaviour
 {
     const string CodeAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
@@ -11,21 +11,31 @@ public class HostMenu : MonoBehaviour
 
     readonly List<string> players = new List<string>();
 
-    public void ShowCode()
+    public string CurrentCode { get; private set; }
+    public bool IsPublic { get; private set; }
+
+    public void ShowCode(bool isPublic)
     {
-        if (codeText == null)
+        if (codeText != null)
         {
-            Debug.LogWarning("HostMenu requires a code text reference.", this);
-            return;
+            var code = new char[6];
+            for (var index = 0; index < code.Length; index++)
+                code[index] = CodeAlphabet[Random.Range(0, CodeAlphabet.Length)];
+
+            CurrentCode = new string(code);
+            IsPublic = isPublic;
+            codeText.text = CurrentCode;
         }
 
-        var code = new char[6];
-        for (var index = 0; index < code.Length; index++)
-            code[index] = CodeAlphabet[Random.Range(0, CodeAlphabet.Length)];
-
-        codeText.text = new string(code);
         players.Clear();
         AddPlayer("Host");
+    }
+
+    public void ShowGameFound()
+    {
+        ShowCode(false);
+        players.Clear();
+        AddPlayer("You");
     }
 
     public void AddPlayer(string playerName)
@@ -40,6 +50,6 @@ public class HostMenu : MonoBehaviour
 
     public void StartGame()
     {
-        Debug.Log("Start game selected for the current lobby.", this);
+        Debug.Log("Start game selected for the found game.", this);
     }
 }

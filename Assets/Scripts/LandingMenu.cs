@@ -7,10 +7,12 @@ public class LandingMenu : MonoBehaviour
 {
     [SerializeField] Camera targetCamera;
     [SerializeField] Transform menuRoot;
-    [SerializeField] Transform hostMenuRoot;
+    [SerializeField] Transform lobbyMenuRoot;
     [SerializeField] Transform joinMenuRoot;
-    [SerializeField] HostMenu hostMenu;
+    [SerializeField] Transform randomGameMenuRoot;
+    [SerializeField] GameFoundMenu lobbyMenu;
     [SerializeField] JoinMenu joinMenu;
+    [SerializeField] RandomGameMenu randomGameMenu;
 
     void Start()
     {
@@ -18,8 +20,9 @@ public class LandingMenu : MonoBehaviour
         EnsureEventSystem();
         EnsureMenuRoot();
         LockMenuToCamera();
-        LockMenuToCamera(hostMenuRoot);
+        LockMenuToCamera(lobbyMenuRoot);
         LockMenuToCamera(joinMenuRoot);
+        LockMenuToCamera(randomGameMenuRoot);
     }
 
     void LockMenuToCamera()
@@ -75,16 +78,26 @@ public class LandingMenu : MonoBehaviour
             eventSystem.gameObject.AddComponent<XRUIInputModule>();
     }
 
-    public void HostGame()
+    public void HostPrivateGame()
     {
-        if (hostMenu == null || hostMenuRoot == null)
+        HostGame(false);
+    }
+
+    public void HostPublicGame()
+    {
+        HostGame(true);
+    }
+
+    void HostGame(bool isPublic)
+    {
+        if (lobbyMenu == null || lobbyMenuRoot == null)
         {
-            Debug.LogWarning("LandingMenu requires a host menu reference.", this);
+            Debug.LogWarning("LandingMenu requires a lobby menu reference.", this);
             return;
         }
 
-        hostMenu.ShowCode();
-        ShowMenu(hostMenuRoot);
+        lobbyMenu.ShowCode(isPublic);
+        ShowMenu(lobbyMenuRoot);
     }
 
     public void JoinGameWithCode()
@@ -97,6 +110,30 @@ public class LandingMenu : MonoBehaviour
         Debug.Log($"Joining game with code {code}.", this);
     }
 
+    public void JoinRandomGame()
+    {
+        if (randomGameMenu == null || randomGameMenuRoot == null)
+        {
+            Debug.LogWarning("LandingMenu requires a random game menu reference.", this);
+            return;
+        }
+
+        ShowMenu(randomGameMenuRoot);
+        randomGameMenu.BeginSearch();
+    }
+
+    public void ShowGameFoundMenu()
+    {
+        if (lobbyMenu == null || lobbyMenuRoot == null)
+        {
+            Debug.LogWarning("LandingMenu requires a lobby menu reference.", this);
+            return;
+        }
+
+        lobbyMenu.ShowGameFound();
+        ShowMenu(lobbyMenuRoot);
+    }
+
     public void BackToLanding()
     {
         ShowMenu(menuRoot);
@@ -105,7 +142,8 @@ public class LandingMenu : MonoBehaviour
     void ShowMenu(Transform activeMenu)
     {
         menuRoot.gameObject.SetActive(activeMenu == menuRoot);
-        hostMenuRoot.gameObject.SetActive(activeMenu == hostMenuRoot);
+        lobbyMenuRoot.gameObject.SetActive(activeMenu == lobbyMenuRoot);
         joinMenuRoot.gameObject.SetActive(activeMenu == joinMenuRoot);
+        randomGameMenuRoot.gameObject.SetActive(activeMenu == randomGameMenuRoot);
     }
 }

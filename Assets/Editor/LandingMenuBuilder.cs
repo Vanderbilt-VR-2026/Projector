@@ -58,6 +58,18 @@ public static class LandingMenuBuilder
             if (existingJoinMenu != null)
                 Undo.DestroyObjectImmediate(existingJoinMenu.gameObject);
 
+            var existingGameFoundMenu = controller.transform.Find("Game Found Menu");
+            if (existingGameFoundMenu != null)
+                Undo.DestroyObjectImmediate(existingGameFoundMenu.gameObject);
+
+            var existingLobbyMenu = controller.transform.Find("Lobby Menu");
+            if (existingLobbyMenu != null)
+                Undo.DestroyObjectImmediate(existingLobbyMenu.gameObject);
+
+            var existingRandomGameMenu = controller.transform.Find("Random Game Menu");
+            if (existingRandomGameMenu != null)
+                Undo.DestroyObjectImmediate(existingRandomGameMenu.gameObject);
+
             CreateLandingMenuObjects();
         }
 
@@ -80,9 +92,10 @@ public static class LandingMenuBuilder
         }
 
         var existingMenu = controller.transform.Find("Landing Menu");
-        var existingHostMenu = controller.transform.Find("Host Menu");
         var existingJoinMenu = controller.transform.Find("Join Game Menu");
-        if (existingMenu != null && existingHostMenu != null && existingJoinMenu != null)
+        var existingLobbyMenu = controller.transform.Find("Lobby Menu");
+        var existingRandomGameMenu = controller.transform.Find("Random Game Menu");
+        if (existingMenu != null && existingJoinMenu != null && existingLobbyMenu != null && existingRandomGameMenu != null)
         {
             Selection.activeGameObject = existingMenu.gameObject;
             return;
@@ -90,47 +103,69 @@ public static class LandingMenuBuilder
 
         var camera = Camera.main != null ? Camera.main : Object.FindFirstObjectByType<Camera>();
         var landingMenu = CreateCanvas("Landing Menu", controller.transform, camera);
+        landingMenu.GetComponent<RectTransform>().sizeDelta = new Vector2(1400f, 1000f);
         var panel = CreateImage("Panel", landingMenu.transform, new Color(0.035f, 0.055f, 0.09f, 0.96f));
         SetFullSize(panel.rectTransform);
 
         var title = CreateText("PROJECTOR", panel.transform, 82, Color.white);
-        SetAnchors(title.rectTransform, new Vector2(0.1f, 0.68f), new Vector2(0.9f, 0.88f));
+        SetAnchors(title.rectTransform, new Vector2(0.1f, 0.76f), new Vector2(0.9f, 0.92f));
 
-        var button = CreateButton("HOST GAME", panel.transform);
-        SetAnchors(button.GetComponent<RectTransform>(), new Vector2(0.28f, 0.36f), new Vector2(0.72f, 0.54f));
-        UnityEventTools.AddPersistentListener(button.onClick, controller.HostGame);
+        var button = CreateButton("HOST PRIVATE GAME", panel.transform);
+        SetAnchors(button.GetComponent<RectTransform>(), new Vector2(0.32f, 0.57f), new Vector2(0.68f, 0.70f));
+        UnityEventTools.AddPersistentListener(button.onClick, controller.HostPrivateGame);
+
+        var publicHostButton = CreateButton("HOST PUBLIC GAME", panel.transform);
+        SetAnchors(publicHostButton.GetComponent<RectTransform>(), new Vector2(0.32f, 0.42f), new Vector2(0.68f, 0.55f));
+        UnityEventTools.AddPersistentListener(publicHostButton.onClick, controller.HostPublicGame);
 
         var joinButton = CreateButton("JOIN GAME WITH CODE", panel.transform);
-        SetAnchors(joinButton.GetComponent<RectTransform>(), new Vector2(0.28f, 0.18f), new Vector2(0.72f, 0.36f));
+        SetAnchors(joinButton.GetComponent<RectTransform>(), new Vector2(0.32f, 0.27f), new Vector2(0.68f, 0.40f));
         UnityEventTools.AddPersistentListener(joinButton.onClick, controller.JoinGameWithCode);
+
+        var randomButton = CreateButton("JOIN RANDOM GAME", panel.transform);
+        SetAnchors(randomButton.GetComponent<RectTransform>(), new Vector2(0.32f, 0.12f), new Vector2(0.68f, 0.25f));
+        UnityEventTools.AddPersistentListener(randomButton.onClick, controller.JoinRandomGame);
 
         var codeText = CreateText("", panel.transform, 64, new Color(1f, 0.8f, 0.3f));
         SetAnchors(codeText.rectTransform, new Vector2(0.15f, 0.12f), new Vector2(0.85f, 0.27f));
 
-        var hostMenu = CreateCanvas("Host Menu", controller.transform, camera);
-        hostMenu.gameObject.SetActive(false);
-        var hostPanel = CreateImage("Panel", hostMenu.transform, new Color(0.035f, 0.055f, 0.09f, 0.96f));
-        SetFullSize(hostPanel.rectTransform);
+        var lobbyMenu = CreateCanvas("Lobby Menu", controller.transform, camera);
+        lobbyMenu.gameObject.SetActive(false);
+        var lobbyPanel = CreateImage("Panel", lobbyMenu.transform, new Color(0.035f, 0.055f, 0.09f, 0.96f));
+        SetFullSize(lobbyPanel.rectTransform);
 
-        var hostCodeText = CreateText("", hostPanel.transform, 64, new Color(1f, 0.8f, 0.3f));
-        SetAnchors(hostCodeText.rectTransform, new Vector2(0.15f, 0.65f), new Vector2(0.85f, 0.9f));
+        var lobbyCodeText = CreateText("", lobbyPanel.transform, 64, new Color(1f, 0.8f, 0.3f));
+        SetAnchors(lobbyCodeText.rectTransform, new Vector2(0.15f, 0.65f), new Vector2(0.85f, 0.9f));
 
-        var playerListTitle = CreateText("CURRENT PLAYERS", hostPanel.transform, 34, Color.white);
+        var playerListTitle = CreateText("CURRENT PLAYERS", lobbyPanel.transform, 34, Color.white);
         SetAnchors(playerListTitle.rectTransform, new Vector2(0.2f, 0.54f), new Vector2(0.8f, 0.63f));
 
-        var playerListText = CreateText("", hostPanel.transform, 34, Color.white);
+        var playerListText = CreateText("", lobbyPanel.transform, 34, Color.white);
         SetAnchors(playerListText.rectTransform, new Vector2(0.2f, 0.32f), new Vector2(0.8f, 0.54f));
         playerListText.alignment = TextAnchor.UpperCenter;
 
-        var hostMenuController = hostMenu.AddComponent<HostMenu>();
-        var hostBackButton = CreateButton("BACK", hostPanel.transform);
-        SetAnchors(hostBackButton.GetComponent<RectTransform>(), new Vector2(0.06f, 0.06f), new Vector2(0.24f, 0.15f));
-        UnityEventTools.AddPersistentListener(hostBackButton.onClick, controller.BackToLanding);
+        var lobbyMenuController = lobbyMenu.AddComponent<GameFoundMenu>();
+        var lobbyBackButton = CreateButton("BACK", lobbyPanel.transform);
+        SetAnchors(lobbyBackButton.GetComponent<RectTransform>(), new Vector2(0.06f, 0.06f), new Vector2(0.24f, 0.15f));
+        UnityEventTools.AddPersistentListener(lobbyBackButton.onClick, controller.BackToLanding);
 
-        var startGameButton = CreateButton("START GAME", hostPanel.transform);
+        var startGameButton = CreateButton("START GAME", lobbyPanel.transform);
         SetAnchors(startGameButton.GetComponent<RectTransform>(), new Vector2(0.76f, 0.06f), new Vector2(0.94f, 0.15f));
         startGameButton.GetComponentInChildren<Text>().fontSize = 22;
-        UnityEventTools.AddPersistentListener(startGameButton.onClick, hostMenuController.StartGame);
+        UnityEventTools.AddPersistentListener(startGameButton.onClick, lobbyMenuController.StartGame);
+
+        var randomGameMenu = CreateCanvas("Random Game Menu", controller.transform, camera);
+        randomGameMenu.gameObject.SetActive(false);
+        var randomPanel = CreateImage("Panel", randomGameMenu.transform, new Color(0.035f, 0.055f, 0.09f, 0.96f));
+        SetFullSize(randomPanel.rectTransform);
+
+        var lookingText = CreateText("Looking for game...", randomPanel.transform, 54, Color.white);
+        SetAnchors(lookingText.rectTransform, new Vector2(0.1f, 0.42f), new Vector2(0.9f, 0.58f));
+
+        var randomGameMenuController = randomGameMenu.AddComponent<RandomGameMenu>();
+        var randomBackButton = CreateButton("BACK", randomPanel.transform);
+        SetAnchors(randomBackButton.GetComponent<RectTransform>(), new Vector2(0.06f, 0.06f), new Vector2(0.24f, 0.15f));
+        UnityEventTools.AddPersistentListener(randomBackButton.onClick, controller.BackToLanding);
 
         var joinMenu = CreateCanvas("Join Game Menu", controller.transform, camera);
         joinMenu.gameObject.SetActive(false);
@@ -155,7 +190,7 @@ public static class LandingMenuBuilder
         SetAnchors(joinBackButton.GetComponent<RectTransform>(), new Vector2(0.06f, 0.06f), new Vector2(0.24f, 0.15f));
         UnityEventTools.AddPersistentListener(joinBackButton.onClick, controller.BackToLanding);
 
-        SetPrivateReferences(controller, camera, landingMenu.transform, hostMenu.transform, joinMenu.transform, hostMenuController, hostCodeText, playerListText, joinMenuController, codeInput);
+        SetPrivateReferences(controller, camera, landingMenu.transform, joinMenu.transform, lobbyMenu.transform, randomGameMenu.transform, lobbyMenuController, lobbyCodeText, playerListText, joinMenuController, codeInput, randomGameMenuController);
         EnsureEventSystem();
         Selection.activeGameObject = landingMenu;
         EditorSceneManager.MarkSceneDirty(landingMenu.scene);
@@ -186,26 +221,32 @@ public static class LandingMenuBuilder
         return canvasObject;
     }
 
-    static void SetPrivateReferences(LandingMenu controller, Camera camera, Transform menuRoot, Transform hostMenuRoot, Transform joinMenuRoot, HostMenu hostMenu, Text hostCodeText, Text playerListText, JoinMenu joinMenu, InputField codeInput)
+    static void SetPrivateReferences(LandingMenu controller, Camera camera, Transform menuRoot, Transform joinMenuRoot, Transform lobbyMenuRoot, Transform randomGameMenuRoot, GameFoundMenu lobbyMenu, Text lobbyCodeText, Text playerListText, JoinMenu joinMenu, InputField codeInput, RandomGameMenu randomGameMenu)
     {
         var serializedController = new SerializedObject(controller);
         serializedController.FindProperty("targetCamera").objectReferenceValue = camera;
         serializedController.FindProperty("menuRoot").objectReferenceValue = menuRoot;
-        serializedController.FindProperty("hostMenuRoot").objectReferenceValue = hostMenuRoot;
         serializedController.FindProperty("joinMenuRoot").objectReferenceValue = joinMenuRoot;
-        serializedController.FindProperty("hostMenu").objectReferenceValue = hostMenu;
+        serializedController.FindProperty("lobbyMenuRoot").objectReferenceValue = lobbyMenuRoot;
+        serializedController.FindProperty("randomGameMenuRoot").objectReferenceValue = randomGameMenuRoot;
+        serializedController.FindProperty("lobbyMenu").objectReferenceValue = lobbyMenu;
         serializedController.FindProperty("joinMenu").objectReferenceValue = joinMenu;
+        serializedController.FindProperty("randomGameMenu").objectReferenceValue = randomGameMenu;
         serializedController.ApplyModifiedPropertiesWithoutUndo();
 
-        var serializedHostMenu = new SerializedObject(hostMenu);
-        serializedHostMenu.FindProperty("codeText").objectReferenceValue = hostCodeText;
-        serializedHostMenu.FindProperty("playerListText").objectReferenceValue = playerListText;
-        serializedHostMenu.ApplyModifiedPropertiesWithoutUndo();
+        var serializedLobbyMenu = new SerializedObject(lobbyMenu);
+        serializedLobbyMenu.FindProperty("codeText").objectReferenceValue = lobbyCodeText;
+        serializedLobbyMenu.FindProperty("playerListText").objectReferenceValue = playerListText;
+        serializedLobbyMenu.ApplyModifiedPropertiesWithoutUndo();
 
         var serializedJoinMenu = new SerializedObject(joinMenu);
         serializedJoinMenu.FindProperty("landingMenu").objectReferenceValue = controller;
         serializedJoinMenu.FindProperty("codeInput").objectReferenceValue = codeInput;
         serializedJoinMenu.ApplyModifiedPropertiesWithoutUndo();
+
+        var serializedRandomGameMenu = new SerializedObject(randomGameMenu);
+        serializedRandomGameMenu.FindProperty("landingMenu").objectReferenceValue = controller;
+        serializedRandomGameMenu.ApplyModifiedPropertiesWithoutUndo();
     }
 
     static void EnsureEventSystem()
