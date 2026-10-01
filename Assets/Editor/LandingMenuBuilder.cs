@@ -115,10 +115,22 @@ public static class LandingMenuBuilder
         var hostCodeText = CreateText("", hostPanel.transform, 64, new Color(1f, 0.8f, 0.3f));
         SetAnchors(hostCodeText.rectTransform, new Vector2(0.15f, 0.65f), new Vector2(0.85f, 0.9f));
 
+        var playerListTitle = CreateText("CURRENT PLAYERS", hostPanel.transform, 34, Color.white);
+        SetAnchors(playerListTitle.rectTransform, new Vector2(0.2f, 0.54f), new Vector2(0.8f, 0.63f));
+
+        var playerListText = CreateText("", hostPanel.transform, 34, Color.white);
+        SetAnchors(playerListText.rectTransform, new Vector2(0.2f, 0.32f), new Vector2(0.8f, 0.54f));
+        playerListText.alignment = TextAnchor.UpperCenter;
+
         var hostMenuController = hostMenu.AddComponent<HostMenu>();
         var hostBackButton = CreateButton("BACK", hostPanel.transform);
         SetAnchors(hostBackButton.GetComponent<RectTransform>(), new Vector2(0.06f, 0.06f), new Vector2(0.24f, 0.15f));
         UnityEventTools.AddPersistentListener(hostBackButton.onClick, controller.BackToLanding);
+
+        var startGameButton = CreateButton("START GAME", hostPanel.transform);
+        SetAnchors(startGameButton.GetComponent<RectTransform>(), new Vector2(0.76f, 0.06f), new Vector2(0.94f, 0.15f));
+        startGameButton.GetComponentInChildren<Text>().fontSize = 22;
+        UnityEventTools.AddPersistentListener(startGameButton.onClick, hostMenuController.StartGame);
 
         var joinMenu = CreateCanvas("Join Game Menu", controller.transform, camera);
         joinMenu.gameObject.SetActive(false);
@@ -143,7 +155,7 @@ public static class LandingMenuBuilder
         SetAnchors(joinBackButton.GetComponent<RectTransform>(), new Vector2(0.06f, 0.06f), new Vector2(0.24f, 0.15f));
         UnityEventTools.AddPersistentListener(joinBackButton.onClick, controller.BackToLanding);
 
-        SetPrivateReferences(controller, camera, landingMenu.transform, hostMenu.transform, joinMenu.transform, hostMenuController, hostCodeText, joinMenuController, codeInput);
+        SetPrivateReferences(controller, camera, landingMenu.transform, hostMenu.transform, joinMenu.transform, hostMenuController, hostCodeText, playerListText, joinMenuController, codeInput);
         EnsureEventSystem();
         Selection.activeGameObject = landingMenu;
         EditorSceneManager.MarkSceneDirty(landingMenu.scene);
@@ -174,7 +186,7 @@ public static class LandingMenuBuilder
         return canvasObject;
     }
 
-    static void SetPrivateReferences(LandingMenu controller, Camera camera, Transform menuRoot, Transform hostMenuRoot, Transform joinMenuRoot, HostMenu hostMenu, Text hostCodeText, JoinMenu joinMenu, InputField codeInput)
+    static void SetPrivateReferences(LandingMenu controller, Camera camera, Transform menuRoot, Transform hostMenuRoot, Transform joinMenuRoot, HostMenu hostMenu, Text hostCodeText, Text playerListText, JoinMenu joinMenu, InputField codeInput)
     {
         var serializedController = new SerializedObject(controller);
         serializedController.FindProperty("targetCamera").objectReferenceValue = camera;
@@ -187,6 +199,7 @@ public static class LandingMenuBuilder
 
         var serializedHostMenu = new SerializedObject(hostMenu);
         serializedHostMenu.FindProperty("codeText").objectReferenceValue = hostCodeText;
+        serializedHostMenu.FindProperty("playerListText").objectReferenceValue = playerListText;
         serializedHostMenu.ApplyModifiedPropertiesWithoutUndo();
 
         var serializedJoinMenu = new SerializedObject(joinMenu);
