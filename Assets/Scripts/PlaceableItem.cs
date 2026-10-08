@@ -1,10 +1,35 @@
 using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 // An item players pick up and arrange in the Projector Room to cast shadows on the wall.
+// Holding it still where it should go confirms the placement, which freezes it there for good.
 [RequireComponent(typeof(Rigidbody), typeof(XRGrabInteractable))]
 public class PlaceableItem : MonoBehaviour
 {
+    static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+
+    [SerializeField] float holdSeconds = 2f;
+    // Hands are never perfectly still in VR: drifting less than this from where the hold began still counts.
+    [SerializeField] float positionLeeway = 0.04f;
+    [SerializeField] float rotationLeeway = 12f;
+    [SerializeField] Color confirmingColor = new Color(1f, 0.8f, 0.3f);
+    [SerializeField] UnityEvent confirmed = new UnityEvent();
+
+    Rigidbody body;
+    XRGrabInteractable grab;
+    Renderer[] renderers;
+    MaterialPropertyBlock tintBlock;
+    Vector3 holdPosition;
+    Quaternion holdRotation;
+    float heldStillSeconds;
+    // False until the item has been carried away from where it was picked up, so lifting it never confirms it.
+    bool carried;
+
+    public bool IsLocked { get; private set; }
+    public UnityEvent Confirmed => confirmed;
+
     // Turns any model into a grabbable item; item generation calls this on whatever it spawns.
     public static PlaceableItem MakePlaceable(GameObject item)
     {
@@ -47,5 +72,106 @@ public class PlaceableItem : MonoBehaviour
         // Velocity tracking keeps a held item solid, so it is stopped by other items instead of passing through them.
         grab.movementType = XRBaseInteractable.MovementType.VelocityTracking;
         grab.throwOnDetach = true;
+    }
+
+    void Awake()
+    {
+        body = GetComponent<Rigidbody>();
+        grab = GetComponent<XRGrabInteractable>();
+        renderers = GetComponentsInChildren<Renderer>();
+        tintBlock = new MaterialPropertyBlock();
+    }
+
+    void OnEnable()
+    {
+        grab.selectEntered.AddListener(OnGrabbed);
+        grab.selectExited.AddListener(OnReleased);
+    }
+
+    void OnDisable()
+    {
+        grab.selectEntered.RemoveListener(OnGrabbed);
+        grab.selectExited.RemoveListener(OnReleased);
+    }
+
+    void OnGrabbed(SelectEnterEventArgs args)
+    {
+        carried = false;
+        RestartHold();
+    }
+
+    void OnReleased(SelectExitEventArgs args)
+    {
+        RestartHold();
+    }
+
+    void Update()
+    {
+        if (IsLocked || !grab.isSelected)
+            return;
+
+        bool moved = Vector3.Distance(transform.position, holdPosition) > positionLeeway
+            || Quaternion.Angle(transform.rotation, holdRotation) > rotationLeeway;
+        if (moved)
+        {
+            carried = true;
+            RestartHold();
+            return;
+        }
+
+        if (!carried)
+            return;
+
+        heldStillSeconds += Time.deltaTime;
+        SetTint(confirmingColor, heldStillSeconds / holdSeconds);
+        if (heldStillSeconds >= holdSeconds)
+            Lock();
+    }
+
+    void RestartHold()
+    {
+        holdPosition = transform.position;
+        holdRotation = transform.rotation;
+        heldStillSeconds = 0f;
+        SetTint(confirmingColor, 0f);
+    }
+
+    // Freezes the item where it is and takes it out of play: it can no longer be grabbed or pushed.
+    void Lock()
+    {
+        IsLocked = true;
+        SetTint(confirmingColor, 0f);
+
+        // A locked item must not fly out of the hand that was holding it.
+        grab.throwOnDetach = false;
+        if (grab.isSelected && grab.interactionManager != null)
+            grab.interactionManager.CancelInteractableSelection((IXRSelectInteractable)grab);
+        grab.enabled = false;
+
+        body.linearVelocity = Vector3.zero;
+        body.angularVelocity = Vector3.zero;
+        body.isKinematic = true;
+
+        confirmed.Invoke();
+    }
+
+    // Blends every material toward `color`; an amount of 0 restores the item's own colors.
+    void SetTint(Color color, float amount)
+    {
+        foreach (Renderer itemRenderer in renderers)
+        {
+            Material[] materials = itemRenderer.sharedMaterials;
+            for (int i = 0; i < materials.Length; i++)
+            {
+                if (amount <= 0f || materials[i] == null || !materials[i].HasProperty(BaseColorId))
+                {
+                    itemRenderer.SetPropertyBlock(null, i);
+                    continue;
+                }
+
+                tintBlock.SetColor(BaseColorId, Color.Lerp(materials[i].GetColor(BaseColorId), color, Mathf.Clamp01(amount) * 0.8f));
+                itemRenderer.SetPropertyBlock(tintBlock, i);
+            }
+        }
     }
 }
