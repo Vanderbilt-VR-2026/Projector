@@ -1,6 +1,11 @@
 using System.Linq;
+using Projector.Networking;
+using Unity.Netcode;
+using Unity.Netcode.Components;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.EventSystems;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
@@ -18,14 +23,6 @@ namespace Projector.Editor
         public static readonly Color AccentColor = new Color(1f, 0.8f, 0.3f);
         public static readonly Color BackgroundColor = new Color(0.06f, 0.065f, 0.075f);
 
-        // One color per player slot (SessionService.MaxPlayers), shared by lobby pads and 2D avatar dummies.
-        public static readonly Color[] PlayerColors =
-        {
-            new Color(0.86f, 0.24f, 0.22f),
-            new Color(0.22f, 0.45f, 0.88f),
-            new Color(0.25f, 0.72f, 0.33f),
-            new Color(0.95f, 0.78f, 0.2f)
-        };
 
         // ---------- Geometry ----------
 
@@ -112,6 +109,26 @@ namespace Projector.Editor
             material.SetFloat("_Smoothness", smoothness);
             material.SetFloat("_Metallic", metallic);
 
+            if (isNew)
+                AssetDatabase.CreateAsset(material, path);
+            else
+                EditorUtility.SetDirty(material);
+            return material;
+        }
+
+        // Flat color with no lighting, for the projected 2D look. Tint per renderer with _BaseColor.
+        public static Material CreateUnlitMaterial(string folder, string name, Color color)
+        {
+            EnsureFolder(folder);
+            string path = folder + "/" + name + ".mat";
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            bool isNew = material == null;
+            if (isNew)
+                material = new Material(shader) { name = name };
+            else
+                material.shader = shader;
+            material.SetColor("_BaseColor", color);
             if (isNew)
                 AssetDatabase.CreateAsset(material, path);
             else
@@ -283,6 +300,79 @@ namespace Projector.Editor
             rectTransform.offsetMax = Vector2.zero;
         }
 
+        // ---------- Networking ----------
+
+        // Netcode identifies NetworkObjects by a GlobalObjectIdHash it only computes when validating an object
+        // that already has a file ID. Scripted builds never trigger that, so validate explicitly after saving.
+        static readonly System.Reflection.MethodInfo ValidateNetworkObject =
+            typeof(NetworkObject).GetMethod("OnValidate", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        // Saves a scene containing NetworkObjects: save (assigns file IDs), add to the build list, hash, save again.
+        public static void SaveNetworkScene(Scene scene, string scenePath, bool firstInBuild = false)
+        {
+            EditorSceneManager.SaveScene(scene, scenePath);
+            AddSceneToBuildSettings(scenePath, firstInBuild);
+            foreach (var root in scene.GetRootGameObjects())
+                foreach (var networkObject in root.GetComponentsInChildren<NetworkObject>(true))
+                    ValidateNetworkObject.Invoke(networkObject, null);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, scenePath);
+        }
+
+        public static void SaveNetworkPrefab(GameObject root, string path)
+        {
+            PrefabUtility.SaveAsPrefabAsset(root, path);
+            Object.DestroyImmediate(root);
+            var asset = AssetDatabase.LoadAssetAtPath<NetworkObject>(path);
+            ValidateNetworkObject.Invoke(asset, null);
+            EditorUtility.SetDirty(asset);
+            AssetDatabase.SaveAssets();
+        }
+
+        // Owner-authority transform sync: the owning player moves the object and everyone else follows.
+        public static NetworkTransform AddOwnerNetworkTransform(GameObject target, bool syncRotation = true)
+        {
+            var networkTransform = target.AddComponent<NetworkTransform>();
+            networkTransform.AuthorityMode = NetworkTransform.AuthorityModes.Owner;
+            networkTransform.SyncRotAngleX = networkTransform.SyncRotAngleY = networkTransform.SyncRotAngleZ = syncRotation;
+            networkTransform.SyncScaleX = networkTransform.SyncScaleY = networkTransform.SyncScaleZ = false;
+            return networkTransform;
+        }
+
+        // A scene object that spawns `prefab` for each player at one of `spawnPoints` (one per slot),
+        // optionally placing that player's XR rig at the matching `rigPoints` entry.
+        public static PlayerSpawner CreatePlayerSpawner(string prefabPath, Vector3[] spawnPositions, Vector3[] rigPositions = null)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<NetworkObject>(prefabPath);
+            if (prefab == null)
+                throw new MissingReferenceException("Network prefab was not found at " + prefabPath + ". Run Projector > Build Network Prefabs.");
+
+            var root = new GameObject("Player Spawner");
+            Undo.RegisterCreatedObjectUndo(root, "Create Player Spawner");
+            root.AddComponent<NetworkObject>();
+            var spawner = root.AddComponent<PlayerSpawner>();
+            SetReference(spawner, "prefab", prefab);
+            SetReferences(spawner, "spawnPoints", CreatePoints("Spawn", root.transform, spawnPositions));
+            if (rigPositions != null)
+                SetReferences(spawner, "rigPoints", CreatePoints("Rig", root.transform, rigPositions));
+
+            new GameObject("Offline Host").AddComponent<OfflineHost>();
+            return spawner;
+        }
+
+        static Object[] CreatePoints(string prefix, Transform parent, Vector3[] positions)
+        {
+            var points = new Object[positions.Length];
+            for (var i = 0; i < positions.Length; i++)
+            {
+                var point = new GameObject($"{prefix} {i + 1}").transform;
+                point.SetParent(parent);
+                point.position = positions[i];
+                points[i] = point;
+            }
+            return points;
+        }
+
         // Wires a private [SerializeField] on a runtime component, the way the builders hand scene objects to scripts.
         public static void SetReference(Object target, string propertyName, Object value)
         {
@@ -291,6 +381,25 @@ namespace Projector.Editor
             if (property == null)
                 throw new MissingReferenceException($"{target.GetType().Name} has no serialized field '{propertyName}'.");
             property.objectReferenceValue = value;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        public static void SetReferences(Object target, string propertyName, Object[] values)
+        {
+            var serialized = new SerializedObject(target);
+            var property = serialized.FindProperty(propertyName);
+            if (property == null || !property.isArray)
+                throw new MissingReferenceException($"{target.GetType().Name} has no serialized array '{propertyName}'.");
+            property.arraySize = values.Length;
+            for (var i = 0; i < values.Length; i++)
+                property.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        public static void SetBool(Object target, string propertyName, bool value)
+        {
+            var serialized = new SerializedObject(target);
+            serialized.FindProperty(propertyName).boolValue = value;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
     }
