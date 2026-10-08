@@ -25,9 +25,9 @@ Multiplayer uses Netcode for GameObjects with Unity Multiplayer Services (Lobby 
 
 In the projector room:
 
-1. **Build.** Grab props off the table (grip) and let go to hang them in the projector's beam. The projector shows a live, stylized 2D drawing of each prop on the left wall, exactly where it sits in the beam. You have 90 s, or press **PROJECT NOW** (or the projector's first button).
+1. **Build.** Grab props off the table (grip) and let go to hang them in the projector's beam. The projector shows a live, stylized 2D drawing of each prop on the left wall, exactly where it sits in the beam. Hold a prop still for 2 seconds to lock it in place for everyone; a prop cannot be locked while it overlaps another one, and it turns red until you move it clear. You have 90 s, or press **PROJECT NOW** (or the projector's first button).
 2. **Race.** The drawn shapes lock in as platforms with a coin over each, and everyone races on the wall: left thumbstick runs, A jumps. Points: 1000/750/500/250 by finish place, +100 per coin, -50 per fall. The host can **END RACE** early.
-3. **Results** are projected on the wall. The host can **PLAY AGAIN** (back to building, props where they were) or anyone can **LEAVE**.
+3. **Results** are projected on the wall. The host can **PLAY AGAIN** (back to building, props where they were and unlocked again) or anyone can **LEAVE**.
 
 The projector films an off-screen 2D stage with an orthographic camera; the wall shows that image through `Projector/Projection Screen` (hotspot falloff, soft focus and glow, color fringing, scanlines, flicker, dust).
 

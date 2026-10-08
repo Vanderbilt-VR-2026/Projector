@@ -156,6 +156,7 @@ namespace Projector.Gameplay
 
         void StartBuilding()
         {
+            NetworkProp.UnlockAll();
             buildEndTime.Value = Now + buildSeconds;
             Phase.Value = GamePhase.Building;
         }
@@ -220,7 +221,7 @@ namespace Projector.Gameplay
 
             // Props are frozen during the race, and the thumbstick drives the runner instead of the player.
             foreach (var prop in FindObjectsByType<NetworkProp>(FindObjectsSortMode.None))
-                prop.GetComponent<XRGrabInteractable>().enabled = !racing;
+                prop.SetGrabAllowed(!racing);
             foreach (var provider in FindObjectsByType<LocomotionProvider>(FindObjectsInactive.Include, FindObjectsSortMode.None))
                 provider.enabled = !racing;
 
