@@ -182,23 +182,7 @@ namespace Projector.Editor
                 bounds = GetCombinedRendererBounds(fruit);
                 fruit.transform.position += Vector3.up * (0.865f - bounds.min.y);
 
-                foreach (MeshFilter filter in fruit.GetComponentsInChildren<MeshFilter>())
-                {
-                    if (filter.sharedMesh == null)
-                        continue;
-
-                    MeshCollider collider = filter.gameObject.AddComponent<MeshCollider>();
-                    collider.sharedMesh = filter.sharedMesh;
-                    collider.convex = true;
-                }
-
-                Rigidbody body = fruit.AddComponent<Rigidbody>();
-                body.mass = 0.25f;
-                body.linearDamping = 0.5f;
-                body.angularDamping = 0.5f;
-                body.interpolation = RigidbodyInterpolation.Interpolate;
-                XRGrabInteractable grab = fruit.AddComponent<XRGrabInteractable>();
-                grab.throwOnDetach = true;
+                PlaceableItem.MakePlaceable(fruit);
             }
         }
 
