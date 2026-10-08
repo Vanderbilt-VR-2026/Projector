@@ -21,7 +21,7 @@ Multiplayer uses Netcode for GameObjects with Unity Multiplayer Services (Lobby 
 | Scene | What it is |
 | --- | --- |
 | `LandingMenu` | First load. **Host private game** (join by code), **host public game** (also findable by **join random game**), **join game with code** (keypad). Then the game-found screen: live code and players; only the host gets **START GAME**. |
-| `ProjectorRoom` | 3D build phase: arrange objects from the table in front of the white wall. |
+| `ProjectorRoom` | 3D build phase: arrange objects from the table in front of the white wall. Hold an item still for 2 seconds to lock it in place; items cannot be locked while overlapping another item. |
 | `Platformer2D` | 2D race graybox: flat wall, start/end platforms, avatar dummies, results scoreboard (mock data). |
 
 The host's scene changes are synced to every player. Leaving, or the host closing the game, returns players to the landing menu.

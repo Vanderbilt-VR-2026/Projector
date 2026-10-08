@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.XR.Interaction.Toolkit;
@@ -5,20 +6,26 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 // An item players pick up and arrange in the Projector Room to cast shadows on the wall.
 // Holding it still where it should go confirms the placement, which freezes it there for good.
+// Items may not overlap: a placement cannot be confirmed while the item is inside another one.
 [RequireComponent(typeof(Rigidbody), typeof(XRGrabInteractable))]
 public class PlaceableItem : MonoBehaviour
 {
     static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+    static readonly List<PlaceableItem> Items = new List<PlaceableItem>();
 
     [SerializeField] float holdSeconds = 2f;
     // Hands are never perfectly still in VR: drifting less than this from where the hold began still counts.
     [SerializeField] float positionLeeway = 0.04f;
     [SerializeField] float rotationLeeway = 12f;
+    // Items resting against each other sink in slightly; only deeper contact than this counts as overlapping.
+    [SerializeField] float overlapTolerance = 0.005f;
     [SerializeField] Color confirmingColor = new Color(1f, 0.8f, 0.3f);
+    [SerializeField] Color overlappingColor = new Color(0.9f, 0.15f, 0.12f);
     [SerializeField] UnityEvent confirmed = new UnityEvent();
 
     Rigidbody body;
     XRGrabInteractable grab;
+    Collider[] colliders;
     Renderer[] renderers;
     MaterialPropertyBlock tintBlock;
     Vector3 holdPosition;
@@ -78,18 +85,21 @@ public class PlaceableItem : MonoBehaviour
     {
         body = GetComponent<Rigidbody>();
         grab = GetComponent<XRGrabInteractable>();
+        colliders = GetComponentsInChildren<Collider>();
         renderers = GetComponentsInChildren<Renderer>();
         tintBlock = new MaterialPropertyBlock();
     }
 
     void OnEnable()
     {
+        Items.Add(this);
         grab.selectEntered.AddListener(OnGrabbed);
         grab.selectExited.AddListener(OnReleased);
     }
 
     void OnDisable()
     {
+        Items.Remove(this);
         grab.selectEntered.RemoveListener(OnGrabbed);
         grab.selectExited.RemoveListener(OnReleased);
     }
@@ -116,11 +126,20 @@ public class PlaceableItem : MonoBehaviour
         {
             carried = true;
             RestartHold();
+        }
+
+        if (OverlapsAnotherItem())
+        {
+            heldStillSeconds = 0f;
+            SetTint(overlappingColor, 1f);
             return;
         }
 
-        if (!carried)
+        if (moved || !carried)
+        {
+            SetTint(confirmingColor, 0f);
             return;
+        }
 
         heldStillSeconds += Time.deltaTime;
         SetTint(confirmingColor, heldStillSeconds / holdSeconds);
@@ -134,6 +153,30 @@ public class PlaceableItem : MonoBehaviour
         holdRotation = transform.rotation;
         heldStillSeconds = 0f;
         SetTint(confirmingColor, 0f);
+    }
+
+    public bool OverlapsAnotherItem()
+    {
+        foreach (PlaceableItem other in Items)
+        {
+            if (other == this)
+                continue;
+
+            foreach (Collider mine in colliders)
+            {
+                foreach (Collider theirs in other.colliders)
+                {
+                    if (Physics.ComputePenetration(
+                            mine, mine.transform.position, mine.transform.rotation,
+                            theirs, theirs.transform.position, theirs.transform.rotation,
+                            out _, out float depth)
+                        && depth > overlapTolerance)
+                        return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     // Freezes the item where it is and takes it out of play: it can no longer be grabbed or pushed.
