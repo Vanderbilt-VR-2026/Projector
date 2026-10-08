@@ -151,7 +151,8 @@ namespace Projector.Editor
                 var prop = props[i];
                 Material material = CreateMaterial(GrayboxFolder, "Prop" + prop.name, prop.color, 0.3f, 0f);
                 float x = (i - (props.Length - 1) / 2f) * 0.45f;
-                var go = CreatePrimitive(prop.type, prop.name, root.transform, new Vector3(x, TableTop + 0.2f, 0.15f), prop.scale, prop.euler, material, true);
+                // A row behind the fruit: props may not overlap, so nothing starts inside anything else.
+                var go = CreatePrimitive(prop.type, prop.name, root.transform, new Vector3(x, TableTop + 0.2f, 0.45f), prop.scale, prop.euler, material, true);
                 // Rest it on the table.
                 var bounds = go.GetComponent<Renderer>().bounds;
                 go.transform.position += Vector3.up * (TableTop - bounds.min.y);
