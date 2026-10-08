@@ -13,7 +13,6 @@ namespace Projector.Editor
     {
         private const string ScenePath = "Assets/Scenes/ProjectorRoom.unity";
         private const string GeneratedFolder = "Assets/Generated/QuestRoom";
-        private const string FoodPackFolder = "Assets/ThirdParty/Quaternius/UltimateFoodPack";
 
         // The room starts just behind the player and runs forward, leaving open floor past the table for level building.
         private const float RoomBackZ = -4f;
@@ -42,7 +41,6 @@ namespace Projector.Editor
 
             CreateRoom(whiteWall, sideWall, floor);
             CreateTable(wood, metal);
-            CreateFruitObjects();
             CreateProjector(projectorBody, metal, lens);
             CreateWhiteboard(boardSurface, aluminum);
             CreateLighting();
@@ -130,90 +128,6 @@ namespace Projector.Editor
                 CreateCube("Leg " + (i + 1), root.transform, legPositions[i], new Vector3(0.13f, 0.72f, 0.13f), metal, true);
         }
 
-        private static void CreateFruitObjects()
-        {
-            GameObject root = new GameObject("Five Fruit Objects");
-            string[] names = { "Green Apple", "Avocado", "Banana", "Pumpkin", "Tomato" };
-            string[] assetPaths =
-            {
-                FoodPackFolder + "/Apple Green/Apple_Green.fbx",
-                FoodPackFolder + "/Avocado/Avocado.fbx",
-                FoodPackFolder + "/Banana/Banana.fbx",
-                FoodPackFolder + "/Pumpkin/Pumpkin.fbx",
-                FoodPackFolder + "/Tomato/Tomato.fbx"
-            };
-            Vector3[] positions =
-            {
-                new Vector3(-0.72f, 0f, 0.10f),
-                new Vector3(-0.36f, 0f, 0.20f),
-                new Vector3(0.00f, 0f, 0.08f),
-                new Vector3(0.38f, 0f, 0.20f),
-                new Vector3(0.70f, 0f, 0.06f)
-            };
-            Vector3[] rotations =
-            {
-                new Vector3(0f, -18f, 0f),
-                new Vector3(0f, 12f, -8f),
-                new Vector3(0f, -8f, -72f),
-                new Vector3(0f, 17f, 0f),
-                new Vector3(0f, -14f, 0f)
-            };
-            float[] targetSizes = { 0.10f, 0.12f, 0.167f, 0.127f, 0.10f };
-
-            for (int i = 0; i < assetPaths.Length; i++)
-            {
-                AssetDatabase.ImportAsset(assetPaths[i], ImportAssetOptions.ForceSynchronousImport);
-                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(assetPaths[i]);
-                if (prefab == null)
-                    throw new MissingReferenceException("Food Pack model was not found at " + assetPaths[i]);
-
-                GameObject fruit = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-                PrefabUtility.UnpackPrefabInstance(fruit, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
-                fruit.name = names[i];
-                fruit.transform.SetParent(root.transform);
-                fruit.transform.position = positions[i];
-                fruit.transform.rotation = Quaternion.Euler(rotations[i]);
-
-                Bounds bounds = GetCombinedRendererBounds(fruit);
-                float longestSide = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
-                if (longestSide > Mathf.Epsilon)
-                    fruit.transform.localScale *= targetSizes[i] / longestSide;
-
-                bounds = GetCombinedRendererBounds(fruit);
-                fruit.transform.position += Vector3.up * (0.865f - bounds.min.y);
-
-                foreach (MeshFilter filter in fruit.GetComponentsInChildren<MeshFilter>())
-                {
-                    if (filter.sharedMesh == null)
-                        continue;
-
-                    MeshCollider collider = filter.gameObject.AddComponent<MeshCollider>();
-                    collider.sharedMesh = filter.sharedMesh;
-                    collider.convex = true;
-                }
-
-                Rigidbody body = fruit.AddComponent<Rigidbody>();
-                body.mass = 0.25f;
-                body.linearDamping = 0.5f;
-                body.angularDamping = 0.5f;
-                body.interpolation = RigidbodyInterpolation.Interpolate;
-                XRGrabInteractable grab = fruit.AddComponent<XRGrabInteractable>();
-                grab.throwOnDetach = true;
-            }
-        }
-
-        private static Bounds GetCombinedRendererBounds(GameObject gameObject)
-        {
-            Renderer[] renderers = gameObject.GetComponentsInChildren<Renderer>();
-            if (renderers.Length == 0)
-                return new Bounds(gameObject.transform.position, Vector3.zero);
-
-            Bounds bounds = renderers[0].bounds;
-            for (int i = 1; i < renderers.Length; i++)
-                bounds.Encapsulate(renderers[i].bounds);
-            return bounds;
-        }
-
         private static void CreateProjector(Material body, Material trim, Material lens)
         {
             // Set into the right wall with the lens facing the left wall; buttons on top stay at hand height.
@@ -299,7 +213,7 @@ namespace Projector.Editor
 
         private static void CreateXrRig()
         {
-            // Spawn at the table's front edge so fruit is within arm's reach without leaving the Guardian boundary.
+            // Spawn at the table's front edge so the props are within arm's reach without leaving the Guardian boundary.
             SceneBuildUtility.CreateXrRig("XR Origin - Quest 3 Hands and Controllers", new Vector3(0f, 0f, -0.40f), Quaternion.identity, BackgroundColor);
         }
 

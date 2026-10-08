@@ -11,8 +11,7 @@ using static Projector.Editor.SceneBuildUtility;
 
 namespace Projector.Editor
 {
-    // Adds the whole game to the projector room without rebuilding the room itself (that needs the local food
-    // pack). The projector films an off-screen 2D "stage" with an orthographic camera and shows it on the left
+    // Adds the whole game to the projector room without rebuilding the room itself. The projector films an off-screen 2D "stage" with an orthographic camera and shows it on the left
     // wall through the projection shader; props in the beam are drawn on that stage as 2D shapes, and the race
     // runs there too. Re-running replaces the previous "Gameplay" objects.
     public static class ProjectorRoomGameplayBuilder
@@ -38,7 +37,6 @@ namespace Projector.Editor
             CreateScreenFrame(root.transform, capture);
             CreateBackWall(root.transform);
             CreateProps(root.transform);
-            NetworkFruit();
 
             Transform stage = CreateStage(root.transform, out ProjectedPlatforms platforms, out Scoreboard scoreboard, out Text banner);
             RenderTexture projection = CreateProjectorCamera(stage);
@@ -151,25 +149,12 @@ namespace Projector.Editor
                 var prop = props[i];
                 Material material = CreateMaterial(GrayboxFolder, "Prop" + prop.name, prop.color, 0.3f, 0f);
                 float x = (i - (props.Length - 1) / 2f) * 0.45f;
-                // A row behind the fruit: props may not overlap, so nothing starts inside anything else.
-                var go = CreatePrimitive(prop.type, prop.name, root.transform, new Vector3(x, TableTop + 0.2f, 0.45f), prop.scale, prop.euler, material, true);
+                var go = CreatePrimitive(prop.type, prop.name, root.transform, new Vector3(x, TableTop + 0.2f, 0.15f), prop.scale, prop.euler, material, true);
                 // Rest it on the table.
                 var bounds = go.GetComponent<Renderer>().bounds;
                 go.transform.position += Vector3.up * (TableTop - bounds.min.y);
                 MakeNetworkProp(go);
             }
-        }
-
-        // The room's fruit (present when the food pack is installed) joins the build as networked props too.
-        private static void NetworkFruit()
-        {
-            var fruit = GameObject.Find("Five Fruit Objects");
-            if (fruit == null)
-                return;
-
-            foreach (var grab in fruit.GetComponentsInChildren<XRGrabInteractable>())
-                if (grab.GetComponent<NetworkProp>() == null)
-                    MakeNetworkProp(grab.gameObject);
         }
 
         private static void MakeNetworkProp(GameObject go)
