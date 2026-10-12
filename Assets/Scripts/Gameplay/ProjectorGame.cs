@@ -141,7 +141,7 @@ namespace Projector.Gameplay
                         nextPreview = Time.time + PreviewInterval;
                         platforms.ShowPreview(capture.Capture());
                     }
-                    if (IsServer && remaining <= 0f)
+                    if (IsServer && buildEndTime.Value > 0 && remaining <= 0f)
                         Project(evenIfEmpty: true);
                     break;
                 case GamePhase.Racing:
@@ -188,6 +188,8 @@ namespace Projector.Gameplay
             itemSeed.Value = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
             itemPlayerCount.Value = NetworkManager.ConnectedClientsIds.Count;
             buildEndTime.Value = Now + buildSeconds;
+            Debug.Log($"Starting building with {itemPlayerCount.Value} connected player(s) and {itemPrefabs?.Length ?? 0} item prefab reference(s).", this);
+            GeneratePlayerItems();
             Phase.Value = GamePhase.Building;
         }
 
@@ -195,16 +197,22 @@ namespace Projector.Gameplay
         {
             ClearGeneratedItems();
             if (itemPrefabs == null || itemPrefabs.Length == 0)
+            {
+                Debug.LogError("No item mock prefabs are assigned to ProjectorGame.itemPrefabs.", this);
                 return;
+            }
 
             var playerCount = itemPlayerCount.Value;
             var order = new List<int>(itemPrefabs.Length);
             for (var i = 0; i < itemPrefabs.Length; i++)
-                if (itemPrefabs[i] is GameObject)
+                if (itemPrefabs[i] != null)
                     order.Add(i);
 
             if (order.Count == 0)
+            {
+                Debug.LogError("ProjectorGame.itemPrefabs contains no valid GameObject references.", this);
                 return;
+            }
 
             var random = new System.Random(itemSeed.Value);
             for (var i = order.Count - 1; i > 0; i--)
@@ -217,11 +225,17 @@ namespace Projector.Gameplay
             {
                 var x = (i - (playerCount - 1) / 2f) * 0.45f;
                 var prefabIndex = order[i % order.Count];
-                var prefab = (GameObject)itemPrefabs[prefabIndex];
-                var item = Instantiate(prefab, new Vector3(x, TableTop, 0.15f), Quaternion.identity);
+                var prefab = itemPrefabs[prefabIndex];
+                var item = Instantiate(prefab, new Vector3(x, TableTop, 0.15f), Quaternion.identity) as GameObject;
+                if (item == null)
+                {
+                    Debug.LogError($"Item prefab '{prefab.name}' did not instantiate as a GameObject.", this);
+                    continue;
+                }
                 item.name = $"{prefab.name} (Player {i + 1})";
                 generatedItems.Add(item);
             }
+            Debug.Log($"Generated {generatedItems.Count} item(s) for {playerCount} player(s).", this);
         }
 
         void ClearGeneratedItems()

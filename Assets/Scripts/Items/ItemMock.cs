@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 namespace ProjectorGame.Items
 {
@@ -33,14 +35,52 @@ namespace ProjectorGame.Items
         public float maxDistanceFromHome = 15f;
 
         Rigidbody m_Body;
+        XRGrabInteractable m_Grab;
         Vector3 m_HomePosition;
         Quaternion m_HomeRotation;
+        public bool HasBeenInteractedWith { get; private set; }
 
         void Awake()
         {
             m_Body = GetComponent<Rigidbody>();
+            m_Grab = GetComponent<XRGrabInteractable>();
+            if (m_Grab != null)
+            {
+                m_Grab.selectEntered.AddListener(OnGrabbed);
+                m_Grab.selectExited.AddListener(OnReleased);
+            }
             m_HomePosition = transform.position;
             m_HomeRotation = transform.rotation;
+            SetStatic();
+        }
+
+        void OnDestroy()
+        {
+            if (m_Grab != null)
+            {
+                m_Grab.selectEntered.RemoveListener(OnGrabbed);
+                m_Grab.selectExited.RemoveListener(OnReleased);
+            }
+        }
+
+        void OnGrabbed(SelectEnterEventArgs args)
+        {
+            HasBeenInteractedWith = true;
+            m_Body.isKinematic = false;
+            m_Body.useGravity = false;
+        }
+
+        void OnReleased(SelectExitEventArgs args)
+        {
+            SetStatic();
+        }
+
+        void SetStatic()
+        {
+            m_Body.linearVelocity = Vector3.zero;
+            m_Body.angularVelocity = Vector3.zero;
+            m_Body.isKinematic = true;
+            m_Body.useGravity = false;
         }
 
         void Update()
@@ -52,14 +92,12 @@ namespace ProjectorGame.Items
         /// <summary>Put the item back where it was placed in the scene.</summary>
         public void ResetToHome()
         {
-            if (!m_Body.isKinematic)
-            {
-                m_Body.linearVelocity = Vector3.zero;
-                m_Body.angularVelocity = Vector3.zero;
-            }
+            m_Body.linearVelocity = Vector3.zero;
+            m_Body.angularVelocity = Vector3.zero;
             transform.SetPositionAndRotation(m_HomePosition, m_HomeRotation);
             m_Body.position = m_HomePosition;
             m_Body.rotation = m_HomeRotation;
+            SetStatic();
         }
     }
 }

@@ -32,44 +32,48 @@ namespace Projector.Gameplay
             var shapes = new List<ProjectedShape>();
             var lens = transform.position;
             foreach (var prop in FindObjectsByType<NetworkProp>(FindObjectsSortMode.InstanceID))
+                AddShape(shapes, prop.transform, lens);
+            foreach (var item in FindObjectsByType<global::ProjectorGame.Items.ItemMock>(FindObjectsSortMode.InstanceID))
+                if (item.HasBeenInteractedWith)
+                    AddShape(shapes, item.transform, lens);
+            return shapes;
+        }
+
+        void AddShape(List<ProjectedShape> shapes, Transform prop, Vector3 lens)
+        {
+            points.Clear();
+            Color? color = null;
+            foreach (var filter in prop.GetComponentsInChildren<MeshFilter>())
             {
-                points.Clear();
-                Color? color = null;
-                foreach (var filter in prop.GetComponentsInChildren<MeshFilter>())
-                {
-                    if (filter.sharedMesh == null)
-                        continue;
-
-                    if (color == null && filter.TryGetComponent(out MeshRenderer meshRenderer) && meshRenderer.sharedMaterial != null)
-                        color = ColorOf(meshRenderer.sharedMaterial);
-
-                    foreach (var vertex in filter.sharedMesh.vertices)
-                    {
-                        var world = filter.transform.TransformPoint(vertex);
-                        // Only geometry between the lens and the wall is in the picture.
-                        if (world.x >= lens.x || world.x <= wallX)
-                            continue;
-
-                        var t = (wallX - lens.x) / (world.x - lens.x);
-                        var hit = lens + (world - lens) * t;
-                        points.Add(ToLevel(new Vector2(hit.z, hit.y)));
-                    }
-                }
-
-                if (points.Count < 3)
+                if (filter.sharedMesh == null)
                     continue;
 
-                // Clamp to the level after projecting, then re-hull so the outline stays convex.
-                var hull = ProjectedLevel.ConvexHull(points);
-                var clamped = new List<Vector2>(hull.Length);
-                foreach (var point in hull)
-                    clamped.Add(Vector2.Max(levelMin, Vector2.Min(levelMax, point)));
-                hull = ProjectedLevel.ConvexHull(clamped);
+                if (color == null && filter.TryGetComponent(out MeshRenderer meshRenderer) && meshRenderer.sharedMaterial != null)
+                    color = ColorOf(meshRenderer.sharedMaterial);
 
-                if (hull.Length >= 3 && ProjectedLevel.Area(hull) >= minimumArea)
-                    shapes.Add(new ProjectedShape { Outline = hull, Color = color ?? Color.white });
+                foreach (var vertex in filter.sharedMesh.vertices)
+                {
+                    var world = filter.transform.TransformPoint(vertex);
+                    if (world.x >= lens.x || world.x <= wallX)
+                        continue;
+
+                    var t = (wallX - lens.x) / (world.x - lens.x);
+                    var hit = lens + (world - lens) * t;
+                    points.Add(ToLevel(new Vector2(hit.z, hit.y)));
+                }
             }
-            return shapes;
+
+            if (points.Count < 3)
+                return;
+
+            var hull = ProjectedLevel.ConvexHull(points);
+            var clamped = new List<Vector2>(hull.Length);
+            foreach (var point in hull)
+                clamped.Add(Vector2.Max(levelMin, Vector2.Min(levelMax, point)));
+            hull = ProjectedLevel.ConvexHull(clamped);
+
+            if (hull.Length >= 3 && ProjectedLevel.Area(hull) >= minimumArea)
+                shapes.Add(new ProjectedShape { Outline = hull, Color = color ?? Color.white });
         }
 
         static Color ColorOf(Material material)
