@@ -420,6 +420,19 @@ namespace Projector.Editor
             SetReference(game, "endRaceButton", endRace.gameObject);
             SetReference(game, "playAgainButton", again.gameObject);
             SetReference(game, "leaveButton", leave.gameObject);
+            SetReferences(game, "itemPrefabs", new Object[]
+            {
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/Block.prefab"),
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/Plank.prefab"),
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/L-Block.prefab"),
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/Stairs.prefab"),
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/Ramp.prefab"),
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/Arch.prefab"),
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/Trampoline.prefab"),
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/Spike Strip.prefab"),
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/Buzzsaw.prefab"),
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/Coin.prefab")
+            });
             SetReferences(game, "viewingSpots", CreateViewingSpots(root.transform, capture));
             var projectorButton = GameObject.Find("Control Button 1");
             if (projectorButton != null)

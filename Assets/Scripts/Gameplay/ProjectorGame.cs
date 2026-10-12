@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Collections.Generic;
 using Projector.Networking;
 using Unity.Netcode;
 using Unity.XR.CoreUtils;
@@ -39,6 +40,12 @@ namespace Projector.Gameplay
         [SerializeField] XRBaseInteractable projectorButton;
         [Tooltip("Where each player slot stands to watch the wall during the race.")]
         [SerializeField] Transform[] viewingSpots;
+
+        const float TableTop = 0.865f;
+        [Tooltip("Item mock prefabs available to be placed on the table.")]
+        [SerializeField] GameObject[] itemPrefabs;
+        readonly List<GameObject> generatedItems = new List<GameObject>();
+        readonly NetworkVariable<int> itemSeed = new NetworkVariable<int>();
 
         public static ProjectorGame Current { get; private set; }
 
@@ -156,8 +163,48 @@ namespace Projector.Gameplay
 
         void StartBuilding()
         {
+            itemSeed.Value = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
             buildEndTime.Value = Now + buildSeconds;
             Phase.Value = GamePhase.Building;
+        }
+
+        void GeneratePlayerItems()
+        {
+            ClearGeneratedItems();
+            if (itemPrefabs == null || itemPrefabs.Length == 0)
+                return;
+
+            var playerCount = NetworkManager.ConnectedClientsIds.Count;
+            var order = new List<int>(itemPrefabs.Length);
+            for (var i = 0; i < itemPrefabs.Length; i++)
+                if (itemPrefabs[i] != null)
+                    order.Add(i);
+
+            var random = new System.Random(itemSeed.Value);
+            for (var i = order.Count - 1; i > 0; i--)
+            {
+                var swap = random.Next(i + 1);
+                (order[i], order[swap]) = (order[swap], order[i]);
+            }
+
+            for (var i = 0; i < playerCount; i++)
+            {
+                var x = (i - (playerCount - 1) / 2f) * 0.45f;
+                var prefabIndex = order[i % order.Count];
+                var item = Instantiate(itemPrefabs[prefabIndex], new Vector3(x, TableTop, 0.15f), Quaternion.identity);
+                item.name = $"{itemPrefabs[prefabIndex].name} (Player {i + 1})";
+                generatedItems.Add(item);
+            }
+        }
+
+        void ClearGeneratedItems()
+        {
+            for (var i = generatedItems.Count - 1; i >= 0; i--)
+            {
+                if (generatedItems[i] != null)
+                    Destroy(generatedItems[i]);
+            }
+            generatedItems.Clear();
         }
 
         // Host: freeze the current projection as the level, send it to everyone, start the race. A button press
@@ -210,7 +257,10 @@ namespace Projector.Gameplay
             var results = phase == GamePhase.Results;
 
             if (building)
+            {
+                GeneratePlayerItems();
                 platforms.ClearLevel();
+            }
             platforms.SetPreviewVisible(building);
             scoreboard.gameObject.SetActive(results);
             projectButton.SetActive(building);
