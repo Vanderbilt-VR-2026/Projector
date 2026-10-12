@@ -43,9 +43,10 @@ namespace Projector.Gameplay
 
         const float TableTop = 0.865f;
         [Tooltip("Item mock prefabs available to be placed on the table.")]
-        [SerializeField] GameObject[] itemPrefabs;
+        [SerializeField] Object[] itemPrefabs;
         readonly List<GameObject> generatedItems = new List<GameObject>();
         readonly NetworkVariable<int> itemSeed = new NetworkVariable<int>();
+        readonly NetworkVariable<int> itemPlayerCount = new NetworkVariable<int>();
 
         public static ProjectorGame Current { get; private set; }
 
@@ -61,16 +62,22 @@ namespace Projector.Gameplay
         {
             Current = this;
             Phase.OnValueChanged += OnPhaseChanged;
+            itemPlayerCount.OnValueChanged += OnItemPlayerCountChanged;
             if (projectorButton != null)
                 projectorButton.selectEntered.AddListener(OnProjectorButton);
+            HideStaticProps();
             if (IsServer)
+            {
                 StartBuilding();
+            }
             Apply(Phase.Value);
         }
 
         public override void OnNetworkDespawn()
         {
             Phase.OnValueChanged -= OnPhaseChanged;
+            itemPlayerCount.OnValueChanged -= OnItemPlayerCountChanged;
+            ClearGeneratedItems();
             if (projectorButton != null)
                 projectorButton.selectEntered.RemoveListener(OnProjectorButton);
             if (Current == this)
@@ -78,6 +85,21 @@ namespace Projector.Gameplay
         }
 
         void OnPhaseChanged(GamePhase previous, GamePhase current) => Apply(current);
+
+        void OnItemPlayerCountChanged(int previous, int current)
+        {
+            if (Phase.Value == GamePhase.Building)
+                GeneratePlayerItems();
+        }
+
+        void HideStaticProps()
+        {
+            var props = transform.parent != null ? transform.parent.Find("Props") : null;
+            if (props == null)
+                return;
+
+            props.gameObject.SetActive(false);
+        }
 
         void OnProjectorButton(SelectEnterEventArgs args) => ProjectNow();
 
@@ -164,6 +186,7 @@ namespace Projector.Gameplay
         void StartBuilding()
         {
             itemSeed.Value = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
+            itemPlayerCount.Value = NetworkManager.ConnectedClientsIds.Count;
             buildEndTime.Value = Now + buildSeconds;
             Phase.Value = GamePhase.Building;
         }
@@ -174,11 +197,14 @@ namespace Projector.Gameplay
             if (itemPrefabs == null || itemPrefabs.Length == 0)
                 return;
 
-            var playerCount = NetworkManager.ConnectedClientsIds.Count;
+            var playerCount = itemPlayerCount.Value;
             var order = new List<int>(itemPrefabs.Length);
             for (var i = 0; i < itemPrefabs.Length; i++)
-                if (itemPrefabs[i] != null)
+                if (itemPrefabs[i] is GameObject)
                     order.Add(i);
+
+            if (order.Count == 0)
+                return;
 
             var random = new System.Random(itemSeed.Value);
             for (var i = order.Count - 1; i > 0; i--)
@@ -191,8 +217,9 @@ namespace Projector.Gameplay
             {
                 var x = (i - (playerCount - 1) / 2f) * 0.45f;
                 var prefabIndex = order[i % order.Count];
-                var item = Instantiate(itemPrefabs[prefabIndex], new Vector3(x, TableTop, 0.15f), Quaternion.identity);
-                item.name = $"{itemPrefabs[prefabIndex].name} (Player {i + 1})";
+                var prefab = (GameObject)itemPrefabs[prefabIndex];
+                var item = Instantiate(prefab, new Vector3(x, TableTop, 0.15f), Quaternion.identity);
+                item.name = $"{prefab.name} (Player {i + 1})";
                 generatedItems.Add(item);
             }
         }

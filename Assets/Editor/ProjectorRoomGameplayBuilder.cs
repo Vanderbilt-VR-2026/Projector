@@ -38,7 +38,6 @@ namespace Projector.Editor
             ProjectionCapture capture = CreateProjector(root.transform);
             CreateScreenFrame(root.transform, capture);
             CreateBackWall(root.transform);
-            CreateProps(root.transform);
             NetworkFruit();
 
             Transform stage = CreateStage(root.transform, out ProjectedPlatforms platforms, out Scoreboard scoreboard, out Text banner);
