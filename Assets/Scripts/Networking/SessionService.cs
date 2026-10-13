@@ -24,6 +24,21 @@ namespace Projector.Networking
 
         public static bool IsHost => Current == null || Current.IsHost;
 
+        // "QuietConvincingMop" from the generated "QuietConvincingMop#42487", or a fallback before sign-in.
+        public static string LocalPlayerName
+        {
+            get
+            {
+                var name = UnityServices.State == ServicesInitializationState.Initialized && AuthenticationService.Instance.IsSignedIn
+                    ? AuthenticationService.Instance.PlayerName
+                    : null;
+                if (string.IsNullOrEmpty(name))
+                    return "Player";
+                var hash = name.IndexOf('#');
+                return hash > 0 ? name.Substring(0, hash) : name;
+            }
+        }
+
         // Private sessions are join-by-code only; public ones can also be found by QuickJoinAsync.
         public static async Task<ISession> HostAsync(bool isPrivate = true)
         {
@@ -84,6 +99,9 @@ namespace Projector.Networking
             }
         }
 
+        // Prefabs under Resources/NetworkPrefabs are registered on every peer so the host can spawn them.
+        public const string NetworkPrefabsFolder = "NetworkPrefabs";
+
         // Players join from the menu scene the host is also in. Netcode would normally reload it on the joining
         // client (resetting its menus); additive client sync keeps the already-loaded scene instead.
         static void KeepClientScenesOnJoin()
@@ -117,7 +135,7 @@ namespace Projector.Networking
                 await AuthenticationService.Instance.GetPlayerNameAsync();
         }
 
-        static void EnsureNetworkManager()
+        public static void EnsureNetworkManager()
         {
             if (NetworkManager.Singleton != null)
                 return;
@@ -130,6 +148,8 @@ namespace Projector.Networking
             manager.NetworkConfig.NetworkTransport = transport;
             manager.NetworkConfig.EnableSceneManagement = true;
             manager.NetworkConfig.ConnectionApproval = false;
+            foreach (var prefab in Resources.LoadAll<NetworkObject>(NetworkPrefabsFolder))
+                manager.AddNetworkPrefab(prefab.gameObject);
 
             // Losing the connection to the host (crash, network drop) ends the game for this player too.
             manager.OnClientStopped += wasHost =>

@@ -83,3 +83,6 @@ Icon?
 *.7z
 .fake
 __MACOSX/
+
+# Unity build tool cache
+/.utmp/
