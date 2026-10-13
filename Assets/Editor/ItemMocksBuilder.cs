@@ -149,7 +149,8 @@ public static class ItemMocksBuilder
 
             var grab = root.AddComponent<XRGrabInteractable>();
             grab.useDynamicAttach = true;
-            grab.throwOnDetach = true;
+            grab.movementType = XRBaseInteractable.MovementType.VelocityTracking;
+            grab.throwOnDetach = false;
 
             var item = root.AddComponent<ItemMock>();
             item.displayName = spec.name;

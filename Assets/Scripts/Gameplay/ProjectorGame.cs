@@ -312,6 +312,9 @@ namespace Projector.Gameplay
             // Props are frozen during the race, and the thumbstick drives the runner instead of the player.
             foreach (var prop in FindObjectsByType<NetworkProp>(FindObjectsSortMode.None))
                 prop.GetComponent<XRGrabInteractable>().enabled = !racing;
+            foreach (var item in generatedItems)
+                if (item != null && item.TryGetComponent<global::ProjectorGame.Items.ItemMock>(out var itemMock))
+                    itemMock.SetGrabAllowed(building);
             foreach (var provider in FindObjectsByType<LocomotionProvider>(FindObjectsInactive.Include, FindObjectsSortMode.None))
                 provider.enabled = !racing;
 
