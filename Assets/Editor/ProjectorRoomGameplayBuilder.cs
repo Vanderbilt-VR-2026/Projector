@@ -1,4 +1,5 @@
 using Projector.Gameplay;
+using GameplayProjectorGame = Projector.Gameplay.ProjectorGame;
 using Unity.Netcode;
 using UnityEditor;
 using UnityEditor.Events;
@@ -381,7 +382,7 @@ namespace Projector.Editor
             var root = new GameObject("Projector Game");
             root.transform.SetParent(parent);
             root.AddComponent<NetworkObject>();
-            ProjectorGame game = root.AddComponent<ProjectorGame>();
+            GameplayProjectorGame game = root.AddComponent<GameplayProjectorGame>();
             RaceManager race = root.AddComponent<RaceManager>();
 
             // Beside the screen's left edge (no room above it under the ceiling): the side nearest the table and
