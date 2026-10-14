@@ -48,6 +48,8 @@ namespace ProjectorGame.Items
             {
                 m_Grab.selectEntered.AddListener(OnGrabbed);
                 m_Grab.selectExited.AddListener(OnReleased);
+                if (GetComponent<GrabHighlight>() == null)
+                    gameObject.AddComponent<GrabHighlight>();
             }
             m_HomePosition = transform.position;
             m_HomeRotation = transform.rotation;
