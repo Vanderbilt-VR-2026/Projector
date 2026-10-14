@@ -38,7 +38,6 @@ namespace Projector.Editor
             ProjectionCapture capture = CreateProjector(root.transform);
             CreateScreenFrame(root.transform, capture);
             CreateBackWall(root.transform);
-            NetworkFruit();
 
             Transform stage = CreateStage(root.transform, out ProjectedPlatforms platforms, out Scoreboard scoreboard, out Text banner);
             RenderTexture projection = CreateProjectorCamera(stage);
@@ -157,18 +156,6 @@ namespace Projector.Editor
                 go.transform.position += Vector3.up * (TableTop - bounds.min.y);
                 MakeNetworkProp(go);
             }
-        }
-
-        // The room's fruit (present when the food pack is installed) joins the build as networked props too.
-        private static void NetworkFruit()
-        {
-            var fruit = GameObject.Find("Five Fruit Objects");
-            if (fruit == null)
-                return;
-
-            foreach (var grab in fruit.GetComponentsInChildren<XRGrabInteractable>())
-                if (grab.GetComponent<NetworkProp>() == null)
-                    MakeNetworkProp(grab.gameObject);
         }
 
         private static void MakeNetworkProp(GameObject go)
