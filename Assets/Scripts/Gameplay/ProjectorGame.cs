@@ -259,17 +259,17 @@ namespace Projector.Gameplay
             if (shapes.Count == 0 && !evenIfEmpty)
                 return false;
 
-            ProjectedLevel.Pack(shapes, out var points, out var counts, out var colors);
-            BuildLevelRpc(points, counts, colors);
+            ProjectedLevel.Pack(shapes, out var points, out var counts, out var colors, out var kinds);
+            BuildLevelRpc(points, counts, colors, kinds);
             Phase.Value = GamePhase.Racing;
             race.BeginRace();
             return true;
         }
 
         [Rpc(SendTo.Everyone)]
-        void BuildLevelRpc(Vector2[] points, int[] counts, Color[] colors)
+        void BuildLevelRpc(Vector2[] points, int[] counts, Color[] colors, int[] kinds)
         {
-            platforms.BuildLevel(ProjectedLevel.Unpack(points, counts, colors));
+            platforms.BuildLevel(ProjectedLevel.Unpack(points, counts, colors, kinds));
         }
 
         // Host: called by the race when it ends.

@@ -6,7 +6,7 @@ namespace Projector.Gameplay
 {
     // A player's racer on the projection stage. The owner simulates it (left thumbstick or A/D to run, A/X button or Space to jump)
     // and its owner-authority NetworkTransform shows it to everyone else. The owner reports coins, falls
-    // and crossing the finish to the race manager.
+    // (including touching a hazard) and crossing the finish to the race manager. Bounce pads launch it.
     [RequireComponent(typeof(Rigidbody), typeof(CapsuleCollider))]
     public class RunnerController : NetworkBehaviour
     {
@@ -20,6 +20,7 @@ namespace Projector.Gameplay
         Vector3 spawnPosition;
         bool jumpQueued;
         bool finished;
+        float bounceSpeed;
 
         void Awake()
         {
@@ -88,6 +89,11 @@ namespace Projector.Gameplay
             if (jumpQueued && grounded)
                 velocity.y = jumpSpeed;
             jumpQueued = false;
+            if (bounceSpeed > 0f)
+            {
+                velocity.y = Mathf.Max(velocity.y, bounceSpeed);
+                bounceSpeed = 0f;
+            }
             body.linearVelocity = velocity;
 
             var level = race.ToLevel(transform.position);
@@ -111,6 +117,34 @@ namespace Projector.Gameplay
             coin.Collect();
             if (RaceManager.Current != null)
                 RaceManager.Current.ReportCoinRpc();
+        }
+
+        // Hazards and bounce pads are solid shapes, so they're found through collisions (only the owner's
+        // runner is simulated, so only the owner gets these).
+        void OnCollisionEnter(Collision collision) => HandleContact(collision, true);
+
+        void OnCollisionStay(Collision collision) => HandleContact(collision, false);
+
+        void HandleContact(Collision collision, bool justLanded)
+        {
+            var race = RaceManager.Current;
+            if (!IsOwner || finished || race == null || !race.IsRunning)
+                return;
+
+            if (collision.collider.GetComponentInParent<Hazard>() != null)
+            {
+                Respawn();
+                race.ReportFallRpc();
+                return;
+            }
+
+            var pad = collision.collider.GetComponentInParent<BouncePad>();
+            if (pad != null && justLanded && collision.contactCount > 0
+                && collision.GetContact(0).point.y < transform.position.y)
+            {
+                bounceSpeed = pad.LaunchSpeed;
+                pad.Flash();
+            }
         }
 
         bool IsGrounded()

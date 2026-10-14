@@ -5,8 +5,9 @@ namespace Projector.Gameplay
 {
     // Draws the projected 2D game on the projection stage (the plane z = 0 of this transform, filmed by the
     // projector camera): flat colored shapes with a dark border, the look of a 2D game rather than a shadow.
-    // While building it shows a live preview of the props; on PROJECT the shapes become solid platforms
-    // with a coin over each. Start and finish platforms are always there.
+    // While building it shows a live preview of the props; on PROJECT the shapes become the level: plain
+    // platforms get a coin over them, hazards send runners back to the start, bounce pads launch them, and a
+    // coin item becomes a pickup. Start and finish platforms are always there.
     public class ProjectedPlatforms : MonoBehaviour
     {
         static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
@@ -75,16 +76,39 @@ namespace Projector.Gameplay
         public void BuildLevel(IReadOnlyList<ProjectedShape> shapes)
         {
             ClearLevel();
+            var solid = 0;
             for (var i = 0; i < shapes.Count; i++)
             {
-                var shape = CreateShape("Platform " + (i + 1), levelRoot);
-                Draw(shape, shapes[i].Outline, shapes[i].Color);
+                var projected = shapes[i];
+
+                // A coin item doesn't become ground: it turns into a pickup where its shadow was.
+                if (projected.Kind == ShapeKind.Coin)
+                {
+                    CreateCoinAt("Coin Item " + (i + 1), Center(projected.Outline));
+                    continue;
+                }
+
+                var shape = CreateShape(projected.Kind + " " + (i + 1), levelRoot);
+                Draw(shape, projected.Outline, projected.Color);
                 var collider = shape.Root.AddComponent<MeshCollider>();
-                collider.sharedMesh = Extrude(shapes[i].Outline, depth);
+                collider.sharedMesh = Extrude(projected.Outline, depth);
                 collider.convex = true;
-                CreateCoin(i, shapes[i].Outline);
+                solid++;
+
+                switch (projected.Kind)
+                {
+                    case ShapeKind.Hazard:
+                        shape.Root.AddComponent<Hazard>().Setup(shape.BorderRenderer, projected.Color);
+                        break;
+                    case ShapeKind.Bounce:
+                        shape.Root.AddComponent<BouncePad>().Setup(shape.BorderRenderer, projected.Color);
+                        break;
+                    default:
+                        CreateCoin(i, projected.Outline);
+                        break;
+                }
             }
-            LevelPlatformCount = shapes.Count;
+            LevelPlatformCount = solid;
         }
 
         public void ClearLevel()
@@ -145,10 +169,22 @@ namespace Projector.Gameplay
                     top = point;
             }
             center /= outline.Length;
+            CreateCoinAt("Coin " + (index + 1), new Vector2(center.x, top.y + 0.6f));
+        }
 
-            var coin = new GameObject("Coin " + (index + 1));
+        static Vector2 Center(Vector2[] outline)
+        {
+            var center = Vector2.zero;
+            foreach (var point in outline)
+                center += point;
+            return center / outline.Length;
+        }
+
+        void CreateCoinAt(string name, Vector2 position)
+        {
+            var coin = new GameObject(name);
             coin.transform.SetParent(levelRoot, false);
-            coin.transform.localPosition = new Vector3(center.x, top.y + 0.6f, 0f);
+            coin.transform.localPosition = new Vector3(position.x, position.y, 0f);
             var face = CreateDisc(coin.transform, "Face", 0.32f, 0f, new Color(1f, 0.82f, 0.2f));
             CreateDisc(coin.transform, "Rim", 0.4f, 0.04f, new Color(0.45f, 0.3f, 0.05f));
             var trigger = coin.AddComponent<SphereCollider>();
