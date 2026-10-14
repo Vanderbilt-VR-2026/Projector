@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Collections.Generic;
 using Projector.Networking;
 using Unity.Netcode;
 using Unity.XR.CoreUtils;
@@ -40,6 +41,13 @@ namespace Projector.Gameplay
         [Tooltip("Where each player slot stands to watch the wall during the race.")]
         [SerializeField] Transform[] viewingSpots;
 
+        const float TableTop = 0.865f;
+        [Tooltip("Item mock prefabs available to be placed on the table.")]
+        [SerializeField] Object[] itemPrefabs;
+        readonly List<GameObject> generatedItems = new List<GameObject>();
+        readonly NetworkVariable<int> itemSeed = new NetworkVariable<int>();
+        readonly NetworkVariable<int> itemPlayerCount = new NetworkVariable<int>();
+
         public static ProjectorGame Current { get; private set; }
 
         public readonly NetworkVariable<GamePhase> Phase = new NetworkVariable<GamePhase>();
@@ -54,16 +62,22 @@ namespace Projector.Gameplay
         {
             Current = this;
             Phase.OnValueChanged += OnPhaseChanged;
+            itemPlayerCount.OnValueChanged += OnItemPlayerCountChanged;
             if (projectorButton != null)
                 projectorButton.selectEntered.AddListener(OnProjectorButton);
+            HideStaticProps();
             if (IsServer)
+            {
                 StartBuilding();
+            }
             Apply(Phase.Value);
         }
 
         public override void OnNetworkDespawn()
         {
             Phase.OnValueChanged -= OnPhaseChanged;
+            itemPlayerCount.OnValueChanged -= OnItemPlayerCountChanged;
+            ClearGeneratedItems();
             if (projectorButton != null)
                 projectorButton.selectEntered.RemoveListener(OnProjectorButton);
             if (Current == this)
@@ -71,6 +85,21 @@ namespace Projector.Gameplay
         }
 
         void OnPhaseChanged(GamePhase previous, GamePhase current) => Apply(current);
+
+        void OnItemPlayerCountChanged(int previous, int current)
+        {
+            if (Phase.Value == GamePhase.Building)
+                GeneratePlayerItems();
+        }
+
+        void HideStaticProps()
+        {
+            var props = transform.parent != null ? transform.parent.Find("Props") : null;
+            if (props == null)
+                return;
+
+            props.gameObject.SetActive(false);
+        }
 
         void OnProjectorButton(SelectEnterEventArgs args) => ProjectNow();
 
@@ -112,7 +141,7 @@ namespace Projector.Gameplay
                         nextPreview = Time.time + PreviewInterval;
                         platforms.ShowPreview(capture.Capture());
                     }
-                    if (IsServer && remaining <= 0f)
+                    if (IsServer && buildEndTime.Value > 0 && remaining <= 0f)
                         Project(evenIfEmpty: true);
                     break;
                 case GamePhase.Racing:
@@ -156,9 +185,67 @@ namespace Projector.Gameplay
 
         void StartBuilding()
         {
-            NetworkProp.UnlockAll();
+            itemSeed.Value = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
+            itemPlayerCount.Value = NetworkManager.ConnectedClientsIds.Count;
             buildEndTime.Value = Now + buildSeconds;
+            Debug.Log($"Starting building with {itemPlayerCount.Value} connected player(s) and {itemPrefabs?.Length ?? 0} item prefab reference(s).", this);
+            GeneratePlayerItems();
             Phase.Value = GamePhase.Building;
+        }
+
+        void GeneratePlayerItems()
+        {
+            ClearGeneratedItems();
+            if (itemPrefabs == null || itemPrefabs.Length == 0)
+            {
+                Debug.LogError("No item mock prefabs are assigned to ProjectorGame.itemPrefabs.", this);
+                return;
+            }
+
+            var playerCount = itemPlayerCount.Value;
+            var order = new List<int>(itemPrefabs.Length);
+            for (var i = 0; i < itemPrefabs.Length; i++)
+                if (itemPrefabs[i] != null)
+                    order.Add(i);
+
+            if (order.Count == 0)
+            {
+                Debug.LogError("ProjectorGame.itemPrefabs contains no valid GameObject references.", this);
+                return;
+            }
+
+            var random = new System.Random(itemSeed.Value);
+            for (var i = order.Count - 1; i > 0; i--)
+            {
+                var swap = random.Next(i + 1);
+                (order[i], order[swap]) = (order[swap], order[i]);
+            }
+
+            for (var i = 0; i < playerCount; i++)
+            {
+                var x = (i - (playerCount - 1) / 2f) * 0.45f;
+                var prefabIndex = order[i % order.Count];
+                var prefab = itemPrefabs[prefabIndex];
+                var item = Instantiate(prefab, new Vector3(x, TableTop, 0.15f), Quaternion.identity) as GameObject;
+                if (item == null)
+                {
+                    Debug.LogError($"Item prefab '{prefab.name}' did not instantiate as a GameObject.", this);
+                    continue;
+                }
+                item.name = $"{prefab.name} (Player {i + 1})";
+                generatedItems.Add(item);
+            }
+            Debug.Log($"Generated {generatedItems.Count} item(s) for {playerCount} player(s).", this);
+        }
+
+        void ClearGeneratedItems()
+        {
+            for (var i = generatedItems.Count - 1; i >= 0; i--)
+            {
+                if (generatedItems[i] != null)
+                    Destroy(generatedItems[i]);
+            }
+            generatedItems.Clear();
         }
 
         // Host: freeze the current projection as the level, send it to everyone, start the race. A button press
@@ -211,7 +298,10 @@ namespace Projector.Gameplay
             var results = phase == GamePhase.Results;
 
             if (building)
+            {
+                GeneratePlayerItems();
                 platforms.ClearLevel();
+            }
             platforms.SetPreviewVisible(building);
             scoreboard.gameObject.SetActive(results);
             projectButton.SetActive(building);
