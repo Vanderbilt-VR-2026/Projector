@@ -422,16 +422,16 @@ namespace Projector.Editor
             SetReference(game, "leaveButton", leave.gameObject);
             SetReferences(game, "itemPrefabs", new Object[]
             {
-                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/Block.prefab"),
-                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/Plank.prefab"),
-                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/L-Block.prefab"),
-                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/Stairs.prefab"),
-                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/Ramp.prefab"),
-                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/Arch.prefab"),
-                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/Trampoline.prefab"),
-                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/Spike Strip.prefab"),
-                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/Buzzsaw.prefab"),
-                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/ItemMocks/Coin.prefab")
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Resources/NetworkPrefabs/ItemMocks/Block.prefab"),
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Resources/NetworkPrefabs/ItemMocks/Plank.prefab"),
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Resources/NetworkPrefabs/ItemMocks/L-Block.prefab"),
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Resources/NetworkPrefabs/ItemMocks/Stairs.prefab"),
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Resources/NetworkPrefabs/ItemMocks/Ramp.prefab"),
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Resources/NetworkPrefabs/ItemMocks/Arch.prefab"),
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Resources/NetworkPrefabs/ItemMocks/Trampoline.prefab"),
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Resources/NetworkPrefabs/ItemMocks/Spike Strip.prefab"),
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Resources/NetworkPrefabs/ItemMocks/Buzzsaw.prefab"),
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Resources/NetworkPrefabs/ItemMocks/Coin.prefab")
             });
             SetReferences(game, "viewingSpots", CreateViewingSpots(root.transform, capture));
             var projectorButton = GameObject.Find("Control Button 1");

@@ -32,9 +32,10 @@ namespace Projector.Gameplay
             var shapes = new List<ProjectedShape>();
             var lens = transform.position;
             foreach (var prop in FindObjectsByType<NetworkProp>(FindObjectsSortMode.InstanceID))
-                AddShape(shapes, prop.transform, lens);
+                if (!prop.TryGetComponent<global::ProjectorGame.Items.ItemMock>(out _) || prop.HasBeenInteractedWith.Value)
+                    AddShape(shapes, prop.transform, lens);
             foreach (var item in FindObjectsByType<global::ProjectorGame.Items.ItemMock>(FindObjectsSortMode.InstanceID))
-                if (item.HasBeenInteractedWith)
+                if (item.HasBeenInteractedWith && item.GetComponent<NetworkProp>() == null)
                     AddShape(shapes, item.transform, lens);
             return shapes;
         }

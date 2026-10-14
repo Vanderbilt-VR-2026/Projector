@@ -45,8 +45,7 @@ namespace Projector.Gameplay
         [Tooltip("Item mock prefabs available to be placed on the table.")]
         [SerializeField] Object[] itemPrefabs;
         readonly List<GameObject> generatedItems = new List<GameObject>();
-        readonly NetworkVariable<int> itemSeed = new NetworkVariable<int>();
-        readonly NetworkVariable<int> itemPlayerCount = new NetworkVariable<int>();
+        int itemSeed;
 
         public static ProjectorGame Current { get; private set; }
 
@@ -62,7 +61,6 @@ namespace Projector.Gameplay
         {
             Current = this;
             Phase.OnValueChanged += OnPhaseChanged;
-            itemPlayerCount.OnValueChanged += OnItemPlayerCountChanged;
             if (projectorButton != null)
                 projectorButton.selectEntered.AddListener(OnProjectorButton);
             HideStaticProps();
@@ -76,7 +74,6 @@ namespace Projector.Gameplay
         public override void OnNetworkDespawn()
         {
             Phase.OnValueChanged -= OnPhaseChanged;
-            itemPlayerCount.OnValueChanged -= OnItemPlayerCountChanged;
             ClearGeneratedItems();
             if (projectorButton != null)
                 projectorButton.selectEntered.RemoveListener(OnProjectorButton);
@@ -85,12 +82,6 @@ namespace Projector.Gameplay
         }
 
         void OnPhaseChanged(GamePhase previous, GamePhase current) => Apply(current);
-
-        void OnItemPlayerCountChanged(int previous, int current)
-        {
-            if (Phase.Value == GamePhase.Building)
-                GeneratePlayerItems();
-        }
 
         void HideStaticProps()
         {
@@ -185,16 +176,18 @@ namespace Projector.Gameplay
 
         void StartBuilding()
         {
-            itemSeed.Value = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
-            itemPlayerCount.Value = NetworkManager.ConnectedClientsIds.Count;
+            itemSeed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
+            var playerCount = NetworkManager.ConnectedClientsIds.Count;
             buildEndTime.Value = Now + buildSeconds;
-            Debug.Log($"Starting building with {itemPlayerCount.Value} connected player(s) and {itemPrefabs?.Length ?? 0} item prefab reference(s).", this);
-            GeneratePlayerItems();
+            Debug.Log($"Starting building with {playerCount} connected player(s) and {itemPrefabs?.Length ?? 0} item prefab reference(s).", this);
             Phase.Value = GamePhase.Building;
         }
 
         void GeneratePlayerItems()
         {
+            if (!IsServer)
+                return;
+
             ClearGeneratedItems();
             if (itemPrefabs == null || itemPrefabs.Length == 0)
             {
@@ -202,7 +195,8 @@ namespace Projector.Gameplay
                 return;
             }
 
-            var playerCount = itemPlayerCount.Value;
+            var clientIds = NetworkManager.ConnectedClientsIds.OrderBy(id => id).ToArray();
+            var playerCount = clientIds.Length;
             var order = new List<int>(itemPrefabs.Length);
             for (var i = 0; i < itemPrefabs.Length; i++)
                 if (itemPrefabs[i] != null)
@@ -214,7 +208,7 @@ namespace Projector.Gameplay
                 return;
             }
 
-            var random = new System.Random(itemSeed.Value);
+            var random = new System.Random(itemSeed);
             for (var i = order.Count - 1; i > 0; i--)
             {
                 var swap = random.Next(i + 1);
@@ -225,24 +219,45 @@ namespace Projector.Gameplay
             {
                 var x = (i - (playerCount - 1) / 2f) * 0.45f;
                 var prefabIndex = order[i % order.Count];
-                var prefab = itemPrefabs[prefabIndex];
-                var item = Instantiate(prefab, new Vector3(x, TableTop, 0.15f), Quaternion.identity) as GameObject;
+                var prefab = itemPrefabs[prefabIndex] as GameObject;
+                var item = prefab != null
+                    ? Instantiate(prefab, new Vector3(x, TableTop, 0.15f), Quaternion.identity)
+                    : null;
                 if (item == null)
                 {
-                    Debug.LogError($"Item prefab '{prefab.name}' did not instantiate as a GameObject.", this);
+                    Debug.LogError("An item prefab did not instantiate as a GameObject.", this);
                     continue;
                 }
                 item.name = $"{prefab.name} (Player {i + 1})";
+                var networkObject = item.GetComponent<NetworkObject>();
+                if (networkObject == null)
+                {
+                    Debug.LogError($"Item prefab '{prefab.name}' is missing NetworkObject.", item);
+                    Destroy(item);
+                    continue;
+                }
                 generatedItems.Add(item);
+                networkObject.SpawnWithOwnership(clientIds[i], true);
             }
             Debug.Log($"Generated {generatedItems.Count} item(s) for {playerCount} player(s).", this);
         }
 
         void ClearGeneratedItems()
         {
+            if (!IsServer)
+            {
+                generatedItems.Clear();
+                return;
+            }
+
             for (var i = generatedItems.Count - 1; i >= 0; i--)
             {
-                if (generatedItems[i] != null)
+                if (generatedItems[i] == null)
+                    continue;
+                var networkObject = generatedItems[i].GetComponent<NetworkObject>();
+                if (networkObject != null && networkObject.IsSpawned)
+                    networkObject.Despawn(true);
+                else
                     Destroy(generatedItems[i]);
             }
             generatedItems.Clear();
@@ -309,12 +324,9 @@ namespace Projector.Gameplay
             playAgainButton.SetActive(results && IsServer);
             leaveButton.SetActive(results);
 
-            // Props are frozen during the race, and the thumbstick drives the runner instead of the player.
+            // Items are movable only during building, and the thumbstick drives the runner during the race.
             foreach (var prop in FindObjectsByType<NetworkProp>(FindObjectsSortMode.None))
-                prop.GetComponent<XRGrabInteractable>().enabled = !racing;
-            foreach (var item in generatedItems)
-                if (item != null && item.TryGetComponent<global::ProjectorGame.Items.ItemMock>(out var itemMock))
-                    itemMock.SetGrabAllowed(building);
+                prop.SetGrabAllowed(building);
             foreach (var provider in FindObjectsByType<LocomotionProvider>(FindObjectsInactive.Include, FindObjectsSortMode.None))
                 provider.enabled = !racing;
 
