@@ -43,7 +43,9 @@ namespace Projector.Gameplay
 
         const float TableTop = 0.865f;
         [Tooltip("Item mock prefabs available to be placed on the table.")]
-        [SerializeField] Object[] itemPrefabs;
+        // GameObject[], not Object[]: a prefab stored in an Object slot serializes as the prefab asset container,
+        // which loads as a nameless non-GameObject, so nothing could be instantiated from it.
+        [SerializeField] GameObject[] itemPrefabs;
         readonly List<GameObject> generatedItems = new List<GameObject>();
         int itemSeed;
 
@@ -219,7 +221,7 @@ namespace Projector.Gameplay
             {
                 var x = (i - (playerCount - 1) / 2f) * 0.45f;
                 var prefabIndex = order[i % order.Count];
-                var prefab = itemPrefabs[prefabIndex] as GameObject;
+                var prefab = itemPrefabs[prefabIndex];
                 var item = prefab != null
                     ? Instantiate(prefab, new Vector3(x, TableTop, 0.15f), Quaternion.identity)
                     : null;
