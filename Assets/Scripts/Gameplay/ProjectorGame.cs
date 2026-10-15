@@ -43,7 +43,14 @@ namespace Projector.Gameplay
 
         const float TableTop = 0.865f;
         [Tooltip("Item mock prefabs available to be placed on the table.")]
-        [SerializeField] Object[] itemPrefabs;
+        // GameObject[], not Object[]: a prefab stored in an Object slot serializes as the prefab asset container,
+        // which loads as a nameless non-GameObject, so nothing could be instantiated from it.
+        [SerializeField] GameObject[] itemPrefabs;
+        [Tooltip("Items each player gets on the table at the start of every build phase.")]
+        [SerializeField, Min(1)] int itemsPerPlayer = 3;
+
+        // Table positions (x from the player's spot, z on the table) for a player's items, in order.
+        static readonly Vector2[] ItemOffsets = { new Vector2(-0.2f, 0.15f), new Vector2(0.2f, 0.15f), new Vector2(0f, 0.45f) };
         readonly List<GameObject> generatedItems = new List<GameObject>();
         int itemSeed;
 
@@ -66,14 +73,47 @@ namespace Projector.Gameplay
             HideStaticProps();
             if (IsServer)
             {
-                StartBuilding();
+                // Items spawned while a player is still loading this scene never reach that player, so with
+                // others joining, start building only once everyone has loaded (or after a timeout).
+                if (NetworkManager.ConnectedClientsIds.Count > 1)
+                {
+                    NetworkManager.SceneManager.OnLoadEventCompleted += OnEveryoneLoaded;
+                    StartCoroutine(StartBuildingAfterTimeout());
+                }
+                else
+                    StartBuilding();
             }
             Apply(Phase.Value);
+        }
+
+        const float LoadTimeoutSeconds = 20f;
+        bool buildStarted;
+
+        void OnEveryoneLoaded(string sceneName, UnityEngine.SceneManagement.LoadSceneMode mode, List<ulong> completed, List<ulong> timedOut)
+        {
+            if (sceneName == gameObject.scene.name)
+                StartFirstBuild();
+        }
+
+        System.Collections.IEnumerator StartBuildingAfterTimeout()
+        {
+            yield return new WaitForSeconds(LoadTimeoutSeconds);
+            StartFirstBuild();
+        }
+
+        void StartFirstBuild()
+        {
+            if (buildStarted)
+                return;
+            NetworkManager.SceneManager.OnLoadEventCompleted -= OnEveryoneLoaded;
+            StartBuilding();
         }
 
         public override void OnNetworkDespawn()
         {
             Phase.OnValueChanged -= OnPhaseChanged;
+            if (IsServer && NetworkManager.SceneManager != null)
+                NetworkManager.SceneManager.OnLoadEventCompleted -= OnEveryoneLoaded;
             ClearGeneratedItems();
             if (projectorButton != null)
                 projectorButton.selectEntered.RemoveListener(OnProjectorButton);
@@ -124,8 +164,8 @@ namespace Projector.Gameplay
             {
                 case GamePhase.Building:
                     var remaining = Mathf.Max(0f, (float)(buildEndTime.Value - Now));
-                    hudText.text = Time.time < noticeUntil
-                        ? notice
+                    hudText.text = Time.time < noticeUntil ? notice
+                        : buildEndTime.Value <= 0 ? "Waiting for players..."
                         : $"Hang objects in the projector beam\n{(int)remaining / 60}:{(int)remaining % 60:00}";
                     if (Time.time >= nextPreview)
                     {
@@ -180,7 +220,10 @@ namespace Projector.Gameplay
             var playerCount = NetworkManager.ConnectedClientsIds.Count;
             buildEndTime.Value = Now + buildSeconds;
             Debug.Log($"Starting building with {playerCount} connected player(s) and {itemPrefabs?.Length ?? 0} item prefab reference(s).", this);
+            buildStarted = true;
             Phase.Value = GamePhase.Building;
+            // Here rather than in Apply: Apply also runs the moment the room spawns, before joiners have loaded.
+            GeneratePlayerItems();
         }
 
         void GeneratePlayerItems()
@@ -215,29 +258,36 @@ namespace Projector.Gameplay
                 (order[i], order[swap]) = (order[swap], order[i]);
             }
 
+            // Each player gets itemsPerPlayer different items, laid out in front of their own spot at the table
+            // (spots are 0.8 m apart): two side by side at the edge, the next one just behind.
+            var itemIndex = 0;
             for (var i = 0; i < playerCount; i++)
             {
-                var x = (i - (playerCount - 1) / 2f) * 0.45f;
-                var prefabIndex = order[i % order.Count];
-                var prefab = itemPrefabs[prefabIndex] as GameObject;
-                var item = prefab != null
-                    ? Instantiate(prefab, new Vector3(x, TableTop, 0.15f), Quaternion.identity)
-                    : null;
-                if (item == null)
+                var spotX = (PlayerRoster.SlotFor(clientIds[i]) - 1.5f) * 0.8f;
+                for (var k = 0; k < itemsPerPlayer; k++, itemIndex++)
                 {
-                    Debug.LogError("An item prefab did not instantiate as a GameObject.", this);
-                    continue;
+                    var offset = ItemOffsets[k % ItemOffsets.Length];
+                    var prefabIndex = order[itemIndex % order.Count];
+                    var prefab = itemPrefabs[prefabIndex];
+                    var item = prefab != null
+                        ? Instantiate(prefab, new Vector3(spotX + offset.x, TableTop, offset.y), Quaternion.identity)
+                        : null;
+                    if (item == null)
+                    {
+                        Debug.LogError("An item prefab did not instantiate as a GameObject.", this);
+                        continue;
+                    }
+                    item.name = $"{prefab.name} (Player {i + 1})";
+                    var networkObject = item.GetComponent<NetworkObject>();
+                    if (networkObject == null)
+                    {
+                        Debug.LogError($"Item prefab '{prefab.name}' is missing NetworkObject.", item);
+                        Destroy(item);
+                        continue;
+                    }
+                    generatedItems.Add(item);
+                    networkObject.SpawnWithOwnership(clientIds[i], true);
                 }
-                item.name = $"{prefab.name} (Player {i + 1})";
-                var networkObject = item.GetComponent<NetworkObject>();
-                if (networkObject == null)
-                {
-                    Debug.LogError($"Item prefab '{prefab.name}' is missing NetworkObject.", item);
-                    Destroy(item);
-                    continue;
-                }
-                generatedItems.Add(item);
-                networkObject.SpawnWithOwnership(clientIds[i], true);
             }
             Debug.Log($"Generated {generatedItems.Count} item(s) for {playerCount} player(s).", this);
         }
@@ -313,10 +363,7 @@ namespace Projector.Gameplay
             var results = phase == GamePhase.Results;
 
             if (building)
-            {
-                GeneratePlayerItems();
                 platforms.ClearLevel();
-            }
             platforms.SetPreviewVisible(building);
             scoreboard.gameObject.SetActive(results);
             projectButton.SetActive(building);

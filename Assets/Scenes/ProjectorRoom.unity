@@ -915,6 +915,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projector.Gameplay.NetworkProp
   ShowTopMostFoldoutHeaderGroup: 1
+  holdSeconds: 2
+  positionLeeway: 0.04
+  rotationLeeway: 12
+  overlapTolerance: 0.005
+  confirmingColor: {r: 1, g: 0.8, b: 0.3, a: 1}
+  overlappingColor: {r: 0.9, g: 0.15, b: 0.12, a: 1}
 --- !u!114 &170488284
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1193,7 +1199,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 50
     m_Alignment: 1
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -1303,7 +1309,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 50
     m_Alignment: 1
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -2224,7 +2230,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 120
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -2665,6 +2671,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projector.Gameplay.NetworkProp
   ShowTopMostFoldoutHeaderGroup: 1
+  holdSeconds: 2
+  positionLeeway: 0.04
+  rotationLeeway: 12
+  overlapTolerance: 0.005
+  confirmingColor: {r: 1, g: 0.8, b: 0.3, a: 1}
+  overlappingColor: {r: 0.9, g: 0.15, b: 0.12, a: 1}
 --- !u!114 &502114845
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3619,6 +3631,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projector.Gameplay.NetworkProp
   ShowTopMostFoldoutHeaderGroup: 1
+  holdSeconds: 2
+  positionLeeway: 0.04
+  rotationLeeway: 12
+  overlapTolerance: 0.005
+  confirmingColor: {r: 1, g: 0.8, b: 0.3, a: 1}
+  overlappingColor: {r: 0.9, g: 0.15, b: 0.12, a: 1}
 --- !u!114 &663252218
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4160,7 +4178,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 120
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -4902,23 +4920,23 @@ MonoBehaviour:
   endRaceButton: {fileID: 1358954075}
   playAgainButton: {fileID: 1531479790}
   leaveButton: {fileID: 1973837349}
-  itemPrefabs:
-  - {fileID: 100100000, guid: 84a3bffa6c3b44887b838171df1c0e76, type: 3}
-  - {fileID: 100100000, guid: a80a643cc268d40929478abebd8d5dc6, type: 3}
-  - {fileID: 100100000, guid: 12f9d32eb2d39461dbdd948c77961d87, type: 3}
-  - {fileID: 100100000, guid: 09b7f81a76d9e4532bdcbdec4521f8b2, type: 3}
-  - {fileID: 100100000, guid: 2a0edc3adcbcf438b9add23e22256bea, type: 3}
-  - {fileID: 100100000, guid: b1022e7e5cd494761bc656a280eaef47, type: 3}
-  - {fileID: 100100000, guid: 19451e8caf6a9475b864d4394e47818a, type: 3}
-  - {fileID: 100100000, guid: 23dda1d0b0f344c9283ea8ad744ca50f, type: 3}
-  - {fileID: 100100000, guid: 4db32b63a49df4bc181e3768af82577f, type: 3}
-  - {fileID: 100100000, guid: 0a65085576b0c4960bd94d616ebc56a0, type: 3}
   projectorButton: {fileID: 881539067}
   viewingSpots:
   - {fileID: 226547604}
   - {fileID: 875781738}
   - {fileID: 1606105988}
   - {fileID: 1478808502}
+  itemPrefabs:
+  - {fileID: 3151762883063333371, guid: 84a3bffa6c3b44887b838171df1c0e76, type: 3}
+  - {fileID: 6749812137315634560, guid: a80a643cc268d40929478abebd8d5dc6, type: 3}
+  - {fileID: 5373288216825605698, guid: 12f9d32eb2d39461dbdd948c77961d87, type: 3}
+  - {fileID: 124746542132222629, guid: 09b7f81a76d9e4532bdcbdec4521f8b2, type: 3}
+  - {fileID: 2471800155969756036, guid: 2a0edc3adcbcf438b9add23e22256bea, type: 3}
+  - {fileID: 521060430815453823, guid: b1022e7e5cd494761bc656a280eaef47, type: 3}
+  - {fileID: 8204182161418402278, guid: 19451e8caf6a9475b864d4394e47818a, type: 3}
+  - {fileID: 7637691517151267652, guid: 23dda1d0b0f344c9283ea8ad744ca50f, type: 3}
+  - {fileID: 7950941678173501192, guid: 4db32b63a49df4bc181e3768af82577f, type: 3}
+  - {fileID: 529438161947779684, guid: 0a65085576b0c4960bd94d616ebc56a0, type: 3}
 --- !u!114 &920698533
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5513,7 +5531,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 120
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -5592,7 +5610,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 64
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -5761,7 +5779,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 72
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -6287,7 +6305,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 80
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -6877,6 +6895,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projector.Gameplay.NetworkProp
   ShowTopMostFoldoutHeaderGroup: 1
+  holdSeconds: 2
+  positionLeeway: 0.04
+  rotationLeeway: 12
+  overlapTolerance: 0.005
+  confirmingColor: {r: 1, g: 0.8, b: 0.3, a: 1}
+  overlappingColor: {r: 0.9, g: 0.15, b: 0.12, a: 1}
 --- !u!114 &1397230062
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7450,7 +7474,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 84
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -7793,7 +7817,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 52
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -7872,7 +7896,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 80
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -8249,7 +8273,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 50
     m_Alignment: 1
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -8541,7 +8565,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 64
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -9207,6 +9231,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projector.Gameplay.NetworkProp
   ShowTopMostFoldoutHeaderGroup: 1
+  holdSeconds: 2
+  positionLeeway: 0.04
+  rotationLeeway: 12
+  overlapTolerance: 0.005
+  confirmingColor: {r: 1, g: 0.8, b: 0.3, a: 1}
+  overlappingColor: {r: 0.9, g: 0.15, b: 0.12, a: 1}
 --- !u!114 &1982417829
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9316,7 +9346,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 50
     m_Alignment: 1
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -10024,6 +10054,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projector.Gameplay.NetworkProp
   ShowTopMostFoldoutHeaderGroup: 1
+  holdSeconds: 2
+  positionLeeway: 0.04
+  rotationLeeway: 12
+  overlapTolerance: 0.005
+  confirmingColor: {r: 1, g: 0.8, b: 0.3, a: 1}
+  overlappingColor: {r: 0.9, g: 0.15, b: 0.12, a: 1}
 --- !u!114 &2053425546
 MonoBehaviour:
   m_ObjectHideFlags: 0
