@@ -73,14 +73,47 @@ namespace Projector.Gameplay
             HideStaticProps();
             if (IsServer)
             {
-                StartBuilding();
+                // Items spawned while a player is still loading this scene never reach that player, so with
+                // others joining, start building only once everyone has loaded (or after a timeout).
+                if (NetworkManager.ConnectedClientsIds.Count > 1)
+                {
+                    NetworkManager.SceneManager.OnLoadEventCompleted += OnEveryoneLoaded;
+                    StartCoroutine(StartBuildingAfterTimeout());
+                }
+                else
+                    StartBuilding();
             }
             Apply(Phase.Value);
+        }
+
+        const float LoadTimeoutSeconds = 20f;
+        bool buildStarted;
+
+        void OnEveryoneLoaded(string sceneName, UnityEngine.SceneManagement.LoadSceneMode mode, List<ulong> completed, List<ulong> timedOut)
+        {
+            if (sceneName == gameObject.scene.name)
+                StartFirstBuild();
+        }
+
+        System.Collections.IEnumerator StartBuildingAfterTimeout()
+        {
+            yield return new WaitForSeconds(LoadTimeoutSeconds);
+            StartFirstBuild();
+        }
+
+        void StartFirstBuild()
+        {
+            if (buildStarted)
+                return;
+            NetworkManager.SceneManager.OnLoadEventCompleted -= OnEveryoneLoaded;
+            StartBuilding();
         }
 
         public override void OnNetworkDespawn()
         {
             Phase.OnValueChanged -= OnPhaseChanged;
+            if (IsServer && NetworkManager.SceneManager != null)
+                NetworkManager.SceneManager.OnLoadEventCompleted -= OnEveryoneLoaded;
             ClearGeneratedItems();
             if (projectorButton != null)
                 projectorButton.selectEntered.RemoveListener(OnProjectorButton);
@@ -131,8 +164,8 @@ namespace Projector.Gameplay
             {
                 case GamePhase.Building:
                     var remaining = Mathf.Max(0f, (float)(buildEndTime.Value - Now));
-                    hudText.text = Time.time < noticeUntil
-                        ? notice
+                    hudText.text = Time.time < noticeUntil ? notice
+                        : buildEndTime.Value <= 0 ? "Waiting for players..."
                         : $"Hang objects in the projector beam\n{(int)remaining / 60}:{(int)remaining % 60:00}";
                     if (Time.time >= nextPreview)
                     {
@@ -187,7 +220,10 @@ namespace Projector.Gameplay
             var playerCount = NetworkManager.ConnectedClientsIds.Count;
             buildEndTime.Value = Now + buildSeconds;
             Debug.Log($"Starting building with {playerCount} connected player(s) and {itemPrefabs?.Length ?? 0} item prefab reference(s).", this);
+            buildStarted = true;
             Phase.Value = GamePhase.Building;
+            // Here rather than in Apply: Apply also runs the moment the room spawns, before joiners have loaded.
+            GeneratePlayerItems();
         }
 
         void GeneratePlayerItems()
@@ -327,10 +363,7 @@ namespace Projector.Gameplay
             var results = phase == GamePhase.Results;
 
             if (building)
-            {
-                GeneratePlayerItems();
                 platforms.ClearLevel();
-            }
             platforms.SetPreviewVisible(building);
             scoreboard.gameObject.SetActive(results);
             projectButton.SetActive(building);
