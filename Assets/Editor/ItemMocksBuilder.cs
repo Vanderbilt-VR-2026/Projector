@@ -1,10 +1,13 @@
 using System.Collections.Generic;
 using System.IO;
+using Projector.Gameplay;
 using ProjectorGame.Items;
+using Unity.Netcode;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
+using static Projector.Editor.SceneBuildUtility;
 
 /// <summary>
 /// Projector > Item Mocks > Build Item Mock Prefabs
@@ -14,7 +17,7 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 public static class ItemMocksBuilder
 {
     const string GeneratedRoot = "Assets/Generated/ItemMocks";
-    const string ItemRoot = "Assets/Prefabs/ItemMocks";
+    const string ItemRoot = "Assets/Resources/NetworkPrefabs/ItemMocks";
 
     [MenuItem("Projector/Item Mocks/Build Item Mock Prefabs")]
     public static void BuildMenu()
@@ -149,17 +152,21 @@ public static class ItemMocksBuilder
 
             var grab = root.AddComponent<XRGrabInteractable>();
             grab.useDynamicAttach = true;
-            grab.throwOnDetach = true;
+            grab.movementType = XRBaseInteractable.MovementType.VelocityTracking;
+            grab.throwOnDetach = false;
 
+            var networkObject = root.AddComponent<NetworkObject>();
+            networkObject.AutoObjectParentSync = false;
+            AddOwnerNetworkTransform(root);
             var item = root.AddComponent<ItemMock>();
             item.displayName = spec.name;
             item.category = spec.category;
             item.gameplayNote = spec.note;
+            root.AddComponent<NetworkProp>();
 
             string path = $"{ItemRoot}/{spec.name}.prefab";
-            var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
-            Object.DestroyImmediate(root);
-            result[spec.name] = prefab;
+            SaveNetworkPrefab(root, path);
+            result[spec.name] = AssetDatabase.LoadAssetAtPath<GameObject>(path);
         }
         AssetDatabase.SaveAssets();
         return result;

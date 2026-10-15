@@ -38,6 +38,7 @@ namespace ProjectorGame.Items
         XRGrabInteractable m_Grab;
         Vector3 m_HomePosition;
         Quaternion m_HomeRotation;
+
         public bool HasBeenInteractedWith { get; private set; }
 
         void Awake()
