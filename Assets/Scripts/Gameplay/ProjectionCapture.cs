@@ -74,7 +74,21 @@ namespace Projector.Gameplay
             hull = ProjectedLevel.ConvexHull(clamped);
 
             if (hull.Length >= 3 && ProjectedLevel.Area(hull) >= minimumArea)
-                shapes.Add(new ProjectedShape { Outline = hull, Color = color ?? Color.white });
+                shapes.Add(new ProjectedShape { Outline = hull, Color = color ?? Color.white, Kind = KindOf(prop) });
+        }
+
+        // Item mocks behave by category in the race; any other prop is plain ground.
+        static ShapeKind KindOf(Transform prop)
+        {
+            if (!prop.TryGetComponent(out global::ProjectorGame.Items.ItemMock item))
+                return ShapeKind.Platform;
+            switch (item.category)
+            {
+                case global::ProjectorGame.Items.ItemCategory.Movement: return ShapeKind.Bounce;
+                case global::ProjectorGame.Items.ItemCategory.Hazard: return ShapeKind.Hazard;
+                case global::ProjectorGame.Items.ItemCategory.Bonus: return ShapeKind.Coin;
+                default: return ShapeKind.Platform;
+            }
         }
 
         static Color ColorOf(Material material)

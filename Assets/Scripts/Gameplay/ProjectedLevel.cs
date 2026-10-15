@@ -3,32 +3,45 @@ using UnityEngine;
 
 namespace Projector.Gameplay
 {
-    // One prop as the projector draws it: its convex outline in level coordinates (x right, y up) and its color.
+    // What a projected shape does in the 2D race. Comes from the prop's ItemMock category.
+    public enum ShapeKind
+    {
+        Platform,   // solid ground (blocks, planks, ramps, stairs, arches, untyped props)
+        Bounce,     // solid, and launches a runner that lands on top (trampoline)
+        Hazard,     // solid, and touching it sends the runner back to the start (spikes, buzzsaw)
+        Coin,       // not solid: becomes a coin pickup at the shape's center
+    }
+
+    // One prop as the projector draws it: its convex outline in level coordinates (x right, y up), its color
+    // and what it does in the race.
     public struct ProjectedShape
     {
         public Vector2[] Outline;
         public Color Color;
+        public ShapeKind Kind;
     }
 
     // Geometry and wire format for projected shapes.
     public static class ProjectedLevel
     {
         // RPCs can't carry jagged arrays, so outlines travel as one flat point list plus per-outline counts.
-        public static void Pack(IReadOnlyList<ProjectedShape> shapes, out Vector2[] points, out int[] counts, out Color[] colors)
+        public static void Pack(IReadOnlyList<ProjectedShape> shapes, out Vector2[] points, out int[] counts, out Color[] colors, out int[] kinds)
         {
             var flat = new List<Vector2>();
             counts = new int[shapes.Count];
             colors = new Color[shapes.Count];
+            kinds = new int[shapes.Count];
             for (var i = 0; i < shapes.Count; i++)
             {
                 counts[i] = shapes[i].Outline.Length;
                 colors[i] = shapes[i].Color;
+                kinds[i] = (int)shapes[i].Kind;
                 flat.AddRange(shapes[i].Outline);
             }
             points = flat.ToArray();
         }
 
-        public static List<ProjectedShape> Unpack(Vector2[] points, int[] counts, Color[] colors)
+        public static List<ProjectedShape> Unpack(Vector2[] points, int[] counts, Color[] colors, int[] kinds)
         {
             var shapes = new List<ProjectedShape>(counts.Length);
             var offset = 0;
@@ -36,7 +49,8 @@ namespace Projector.Gameplay
             {
                 var outline = new Vector2[counts[i]];
                 System.Array.Copy(points, offset, outline, 0, counts[i]);
-                shapes.Add(new ProjectedShape { Outline = outline, Color = colors[i] });
+                var kind = kinds != null && i < kinds.Length ? (ShapeKind)kinds[i] : ShapeKind.Platform;
+                shapes.Add(new ProjectedShape { Outline = outline, Color = colors[i], Kind = kind });
                 offset += counts[i];
             }
             return shapes;
