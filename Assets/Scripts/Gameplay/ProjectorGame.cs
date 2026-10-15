@@ -46,6 +46,11 @@ namespace Projector.Gameplay
         // GameObject[], not Object[]: a prefab stored in an Object slot serializes as the prefab asset container,
         // which loads as a nameless non-GameObject, so nothing could be instantiated from it.
         [SerializeField] GameObject[] itemPrefabs;
+        [Tooltip("Items each player gets on the table at the start of every build phase.")]
+        [SerializeField, Min(1)] int itemsPerPlayer = 3;
+
+        // Table positions (x from the player's spot, z on the table) for a player's items, in order.
+        static readonly Vector2[] ItemOffsets = { new Vector2(-0.2f, 0.15f), new Vector2(0.2f, 0.15f), new Vector2(0f, 0.45f) };
         readonly List<GameObject> generatedItems = new List<GameObject>();
         int itemSeed;
 
@@ -217,29 +222,36 @@ namespace Projector.Gameplay
                 (order[i], order[swap]) = (order[swap], order[i]);
             }
 
+            // Each player gets itemsPerPlayer different items, laid out in front of their own spot at the table
+            // (spots are 0.8 m apart): two side by side at the edge, the next one just behind.
+            var itemIndex = 0;
             for (var i = 0; i < playerCount; i++)
             {
-                var x = (i - (playerCount - 1) / 2f) * 0.45f;
-                var prefabIndex = order[i % order.Count];
-                var prefab = itemPrefabs[prefabIndex];
-                var item = prefab != null
-                    ? Instantiate(prefab, new Vector3(x, TableTop, 0.15f), Quaternion.identity)
-                    : null;
-                if (item == null)
+                var spotX = (PlayerRoster.SlotFor(clientIds[i]) - 1.5f) * 0.8f;
+                for (var k = 0; k < itemsPerPlayer; k++, itemIndex++)
                 {
-                    Debug.LogError("An item prefab did not instantiate as a GameObject.", this);
-                    continue;
+                    var offset = ItemOffsets[k % ItemOffsets.Length];
+                    var prefabIndex = order[itemIndex % order.Count];
+                    var prefab = itemPrefabs[prefabIndex];
+                    var item = prefab != null
+                        ? Instantiate(prefab, new Vector3(spotX + offset.x, TableTop, offset.y), Quaternion.identity)
+                        : null;
+                    if (item == null)
+                    {
+                        Debug.LogError("An item prefab did not instantiate as a GameObject.", this);
+                        continue;
+                    }
+                    item.name = $"{prefab.name} (Player {i + 1})";
+                    var networkObject = item.GetComponent<NetworkObject>();
+                    if (networkObject == null)
+                    {
+                        Debug.LogError($"Item prefab '{prefab.name}' is missing NetworkObject.", item);
+                        Destroy(item);
+                        continue;
+                    }
+                    generatedItems.Add(item);
+                    networkObject.SpawnWithOwnership(clientIds[i], true);
                 }
-                item.name = $"{prefab.name} (Player {i + 1})";
-                var networkObject = item.GetComponent<NetworkObject>();
-                if (networkObject == null)
-                {
-                    Debug.LogError($"Item prefab '{prefab.name}' is missing NetworkObject.", item);
-                    Destroy(item);
-                    continue;
-                }
-                generatedItems.Add(item);
-                networkObject.SpawnWithOwnership(clientIds[i], true);
             }
             Debug.Log($"Generated {generatedItems.Count} item(s) for {playerCount} player(s).", this);
         }
