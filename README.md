@@ -11,6 +11,10 @@ Then, when time is up, the casted shadows of these objects will become physical 
 
 Users will be loaded into this 2D environment to race, collecting points for various actions. At the end of the race, a winner will be selected and displayed. Then, they can return to the initial landing page(s).
 
+## Sprint 2 video demo
+
+[Watch the Sprint 2 video demo on GitHub](https://github.com/Vanderbilt-VR-2026/Projector/blob/main/docs/VR-SPRINT2.mov).
+
 ## Technology
 We are developing using XR Toolkit and ProBuilder, for Meta Oculus 3.
 
