@@ -64,6 +64,9 @@ namespace Projector.Gameplay
         float noticeUntil;
         string notice;
         double pauseStartedAt;
+        Canvas pauseOverlay;
+        Text pauseOverlayText;
+        string[] pausedPlayerNames = new string[0];
 
         double Now => NetworkManager.ServerTime.Time;
 
@@ -90,6 +93,7 @@ namespace Projector.Gameplay
                 else
                     StartBuilding();
             }
+            CreatePauseOverlay();
             Apply(Phase.Value);
             ApplyPause(IsPaused.Value);
         }
@@ -127,6 +131,8 @@ namespace Projector.Gameplay
                 NetworkManager.SceneManager.OnLoadEventCompleted -= OnEveryoneLoaded;
             headAvailability.Clear();
             ClearGeneratedItems();
+            if (pauseOverlay != null)
+                Destroy(pauseOverlay.gameObject);
             if (projectorButton != null)
                 projectorButton.selectEntered.RemoveListener(OnProjectorButton);
             if (Current == this)
@@ -153,12 +159,63 @@ namespace Projector.Gameplay
         {
             if (hudText != null && paused)
                 hudText.text = "PAUSED\nPut your headset on";
+            UpdatePauseOverlay(paused);
 
             var building = Phase.Value == GamePhase.Building;
             foreach (var prop in FindObjectsByType<NetworkProp>(FindObjectsSortMode.None))
                 prop.SetGrabAllowed(building && !paused);
             foreach (var provider in FindObjectsByType<LocomotionProvider>(FindObjectsInactive.Include, FindObjectsSortMode.None))
                 provider.enabled = !paused && Phase.Value != GamePhase.Racing;
+        }
+
+        void CreatePauseOverlay()
+        {
+            var overlayObject = new GameObject("Pause Overlay");
+            overlayObject.transform.SetParent(transform, false);
+            pauseOverlay = overlayObject.AddComponent<Canvas>();
+            pauseOverlay.renderMode = RenderMode.ScreenSpaceOverlay;
+            pauseOverlay.sortingOrder = 100;
+            overlayObject.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            overlayObject.AddComponent<GraphicRaycaster>();
+
+            var panelObject = new GameObject("Panel");
+            panelObject.transform.SetParent(overlayObject.transform, false);
+            var panel = panelObject.AddComponent<Image>();
+            panel.color = new Color(0f, 0f, 0f, 0.82f);
+            SetFullScreen(panel.rectTransform);
+
+            var textObject = new GameObject("Waiting For Players");
+            textObject.transform.SetParent(panelObject.transform, false);
+            pauseOverlayText = textObject.AddComponent<Text>();
+            pauseOverlayText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            pauseOverlayText.fontSize = 44;
+            pauseOverlayText.color = Color.white;
+            pauseOverlayText.alignment = TextAnchor.MiddleCenter;
+            pauseOverlayText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            pauseOverlayText.verticalOverflow = VerticalWrapMode.Overflow;
+            SetFullScreen(pauseOverlayText.rectTransform, new Vector2(0.15f, 0.15f), new Vector2(0.85f, 0.85f));
+            overlayObject.SetActive(false);
+        }
+
+        void UpdatePauseOverlay(bool paused)
+        {
+            if (pauseOverlay == null)
+                return;
+
+            pauseOverlay.gameObject.SetActive(paused);
+            if (pauseOverlayText != null)
+            {
+                var names = pausedPlayerNames.Length > 0 ? "\n" + string.Join("\n", pausedPlayerNames) : "";
+                pauseOverlayText.text = $"Waiting for the following players to reconnect:{names}";
+            }
+        }
+
+        static void SetFullScreen(RectTransform rect, Vector2? minimum = null, Vector2? maximum = null)
+        {
+            rect.anchorMin = minimum ?? Vector2.zero;
+            rect.anchorMax = maximum ?? Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
         }
 
         void OnClientDisconnected(ulong clientId)
@@ -170,8 +227,17 @@ namespace Projector.Gameplay
         [Rpc(SendTo.Server)]
         public void ReportHeadTrackingRpc(bool available, RpcParams rpcParams = default)
         {
-            headAvailability[rpcParams.Receive.SenderClientId] = available;
+            var clientId = rpcParams.Receive.SenderClientId;
+            headAvailability[clientId] = available;
+            Debug.Log($"Received head state: client={clientId}, available={available}", this);
             EvaluateHeadAvailability();
+        }
+
+        [Rpc(SendTo.Everyone)]
+        void UpdatePausedPlayersRpc(string[] names)
+        {
+            pausedPlayerNames = names ?? new string[0];
+            UpdatePauseOverlay(IsPaused.Value);
         }
 
         void EvaluateHeadAvailability()
@@ -190,9 +256,25 @@ namespace Projector.Gameplay
             }
 
             if (paused == IsPaused.Value)
+            {
+                PublishPausedPlayers();
                 return;
+            }
 
             IsPaused.Value = paused;
+            PublishPausedPlayers();
+        }
+
+        void PublishPausedPlayers()
+        {
+            var names = new List<string>();
+            foreach (var identity in FindObjectsByType<PlayerIdentity>(FindObjectsSortMode.None))
+            {
+                if (headAvailability.TryGetValue(identity.OwnerClientId, out var available) && !available)
+                    names.Add(identity.Name);
+            }
+
+            UpdatePausedPlayersRpc(names.ToArray());
         }
 
         void HideStaticProps()
