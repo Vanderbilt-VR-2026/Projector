@@ -68,6 +68,7 @@ namespace Projector.Gameplay
         Canvas pauseOverlay;
         Text pauseOverlayText;
         FixedString64Bytes[] pausedPlayerNames = new FixedString64Bytes[0];
+        Coroutine pausedPlayerRefresh;
 
         double Now => NetworkManager.ServerTime.Time;
 
@@ -269,16 +270,55 @@ namespace Projector.Gameplay
         void PublishPausedPlayers()
         {
             var names = new List<string>();
+            var waitingForNames = false;
             foreach (var identity in FindObjectsByType<PlayerIdentity>(FindObjectsSortMode.None))
             {
                 if (headAvailability.TryGetValue(identity.OwnerClientId, out var available) && !available)
-                    names.Add(identity.Name);
+                {
+                    if (identity.DisplayName.Value.IsEmpty)
+                    {
+                        waitingForNames = true;
+                        continue;
+                    }
+
+                    names.Add(identity.DisplayName.Value.ToString());
+                }
             }
 
             var networkNames = new FixedString64Bytes[names.Count];
             for (var i = 0; i < names.Count; i++)
                 networkNames[i] = names[i];
             UpdatePausedPlayersRpc(networkNames);
+
+            if (waitingForNames && pausedPlayerRefresh == null)
+                pausedPlayerRefresh = StartCoroutine(RefreshPausedPlayerNames());
+        }
+
+        System.Collections.IEnumerator RefreshPausedPlayerNames()
+        {
+            for (var attempt = 0; attempt < 20; attempt++)
+            {
+                yield return new WaitForSeconds(0.1f);
+                if (!IsServer)
+                    break;
+
+                PublishPausedPlayers();
+                var missingName = false;
+                foreach (var identity in FindObjectsByType<PlayerIdentity>(FindObjectsSortMode.None))
+                {
+                    if (headAvailability.TryGetValue(identity.OwnerClientId, out var available)
+                        && !available && identity.DisplayName.Value.IsEmpty)
+                    {
+                        missingName = true;
+                        break;
+                    }
+                }
+
+                if (!missingName)
+                    break;
+            }
+
+            pausedPlayerRefresh = null;
         }
 
         void HideStaticProps()
