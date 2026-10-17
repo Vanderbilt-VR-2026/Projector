@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Collections.Generic;
 using Projector.Networking;
+using Unity.Collections;
 using Unity.Netcode;
 using Unity.XR.CoreUtils;
 using UnityEngine;
@@ -66,7 +67,7 @@ namespace Projector.Gameplay
         double pauseStartedAt;
         Canvas pauseOverlay;
         Text pauseOverlayText;
-        string[] pausedPlayerNames = new string[0];
+        FixedString64Bytes[] pausedPlayerNames = new FixedString64Bytes[0];
 
         double Now => NetworkManager.ServerTime.Time;
 
@@ -187,7 +188,7 @@ namespace Projector.Gameplay
             var textObject = new GameObject("Waiting For Players");
             textObject.transform.SetParent(panelObject.transform, false);
             pauseOverlayText = textObject.AddComponent<Text>();
-            pauseOverlayText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            pauseOverlayText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             pauseOverlayText.fontSize = 44;
             pauseOverlayText.color = Color.white;
             pauseOverlayText.alignment = TextAnchor.MiddleCenter;
@@ -234,9 +235,9 @@ namespace Projector.Gameplay
         }
 
         [Rpc(SendTo.Everyone)]
-        void UpdatePausedPlayersRpc(string[] names)
+        void UpdatePausedPlayersRpc(FixedString64Bytes[] names)
         {
-            pausedPlayerNames = names ?? new string[0];
+            pausedPlayerNames = names ?? new FixedString64Bytes[0];
             UpdatePauseOverlay(IsPaused.Value);
         }
 
@@ -274,7 +275,10 @@ namespace Projector.Gameplay
                     names.Add(identity.Name);
             }
 
-            UpdatePausedPlayersRpc(names.ToArray());
+            var networkNames = new FixedString64Bytes[names.Count];
+            for (var i = 0; i < names.Count; i++)
+                networkNames[i] = names[i];
+            UpdatePausedPlayersRpc(networkNames);
         }
 
         void HideStaticProps()
