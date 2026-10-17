@@ -57,10 +57,13 @@ namespace Projector.Gameplay
         public static ProjectorGame Current { get; private set; }
 
         public readonly NetworkVariable<GamePhase> Phase = new NetworkVariable<GamePhase>();
+        public readonly NetworkVariable<bool> IsPaused = new NetworkVariable<bool>();
         readonly NetworkVariable<double> buildEndTime = new NetworkVariable<double>();
+        readonly Dictionary<ulong, bool> headAvailability = new Dictionary<ulong, bool>();
         float nextPreview;
         float noticeUntil;
         string notice;
+        double pauseStartedAt;
 
         double Now => NetworkManager.ServerTime.Time;
 
@@ -68,11 +71,15 @@ namespace Projector.Gameplay
         {
             Current = this;
             Phase.OnValueChanged += OnPhaseChanged;
+            IsPaused.OnValueChanged += OnPausedChanged;
             if (projectorButton != null)
                 projectorButton.selectEntered.AddListener(OnProjectorButton);
             HideStaticProps();
             if (IsServer)
             {
+                NetworkManager.OnClientDisconnectCallback += OnClientDisconnected;
+                foreach (var clientId in NetworkManager.ConnectedClientsIds)
+                    headAvailability[clientId] = true;
                 // Items spawned while a player is still loading this scene never reach that player, so with
                 // others joining, start building only once everyone has loaded (or after a timeout).
                 if (NetworkManager.ConnectedClientsIds.Count > 1)
@@ -84,6 +91,7 @@ namespace Projector.Gameplay
                     StartBuilding();
             }
             Apply(Phase.Value);
+            ApplyPause(IsPaused.Value);
         }
 
         const float LoadTimeoutSeconds = 20f;
@@ -112,8 +120,12 @@ namespace Projector.Gameplay
         public override void OnNetworkDespawn()
         {
             Phase.OnValueChanged -= OnPhaseChanged;
+            IsPaused.OnValueChanged -= OnPausedChanged;
+            if (IsServer && NetworkManager != null)
+                NetworkManager.OnClientDisconnectCallback -= OnClientDisconnected;
             if (IsServer && NetworkManager.SceneManager != null)
                 NetworkManager.SceneManager.OnLoadEventCompleted -= OnEveryoneLoaded;
+            headAvailability.Clear();
             ClearGeneratedItems();
             if (projectorButton != null)
                 projectorButton.selectEntered.RemoveListener(OnProjectorButton);
@@ -122,6 +134,66 @@ namespace Projector.Gameplay
         }
 
         void OnPhaseChanged(GamePhase previous, GamePhase current) => Apply(current);
+
+        void OnPausedChanged(bool previous, bool current)
+        {
+            if (current)
+                pauseStartedAt = Now;
+            else if (IsServer)
+            {
+                var pauseDuration = Mathf.Max(0f, (float)(Now - pauseStartedAt));
+                buildEndTime.Value += pauseDuration;
+                race.PauseFor(pauseDuration);
+            }
+
+            ApplyPause(current);
+        }
+
+        void ApplyPause(bool paused)
+        {
+            if (hudText != null && paused)
+                hudText.text = "PAUSED\nPut your headset on";
+
+            var building = Phase.Value == GamePhase.Building;
+            foreach (var prop in FindObjectsByType<NetworkProp>(FindObjectsSortMode.None))
+                prop.SetGrabAllowed(building && !paused);
+            foreach (var provider in FindObjectsByType<LocomotionProvider>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                provider.enabled = !paused && Phase.Value != GamePhase.Racing;
+        }
+
+        void OnClientDisconnected(ulong clientId)
+        {
+            headAvailability.Remove(clientId);
+            EvaluateHeadAvailability();
+        }
+
+        [Rpc(SendTo.Server)]
+        public void ReportHeadTrackingRpc(bool available, RpcParams rpcParams = default)
+        {
+            headAvailability[rpcParams.Receive.SenderClientId] = available;
+            EvaluateHeadAvailability();
+        }
+
+        void EvaluateHeadAvailability()
+        {
+            if (!IsServer)
+                return;
+
+            var paused = false;
+            foreach (var clientId in NetworkManager.ConnectedClientsIds)
+            {
+                if (headAvailability.TryGetValue(clientId, out var available) && !available)
+                {
+                    paused = true;
+                    break;
+                }
+            }
+
+            if (paused == IsPaused.Value)
+                return;
+
+            IsPaused.Value = paused;
+        }
 
         void HideStaticProps()
         {
@@ -160,6 +232,12 @@ namespace Projector.Gameplay
             if (!IsSpawned)
                 return;
 
+            if (IsPaused.Value)
+            {
+                hudText.text = "PAUSED\nPut your headset on";
+                return;
+            }
+
             switch (Phase.Value)
             {
                 case GamePhase.Building:
@@ -187,6 +265,8 @@ namespace Projector.Gameplay
         [Rpc(SendTo.Server)]
         void RequestProjectRpc(RpcParams rpcParams = default)
         {
+            if (IsPaused.Value)
+                return;
             if (!Project(evenIfEmpty: false))
                 NoticeRpc("Hang something in the beam first!", RpcTarget.Single(rpcParams.Receive.SenderClientId, RpcTargetUse.Temp));
         }
@@ -201,7 +281,7 @@ namespace Projector.Gameplay
         [Rpc(SendTo.Server)]
         void RequestPlayAgainRpc(RpcParams rpcParams = default)
         {
-            if (Phase.Value != GamePhase.Results || rpcParams.Receive.SenderClientId != NetworkManager.ServerClientId)
+            if (IsPaused.Value || Phase.Value != GamePhase.Results || rpcParams.Receive.SenderClientId != NetworkManager.ServerClientId)
                 return;
             race.ResetRace();
             StartBuilding();
@@ -210,7 +290,7 @@ namespace Projector.Gameplay
         [Rpc(SendTo.Server)]
         void RequestEndRaceRpc(RpcParams rpcParams = default)
         {
-            if (Phase.Value == GamePhase.Racing && rpcParams.Receive.SenderClientId == NetworkManager.ServerClientId)
+            if (!IsPaused.Value && Phase.Value == GamePhase.Racing && rpcParams.Receive.SenderClientId == NetworkManager.ServerClientId)
                 race.EndNow();
         }
 
@@ -373,9 +453,9 @@ namespace Projector.Gameplay
 
             // Items are movable only during building, and the thumbstick drives the runner during the race.
             foreach (var prop in FindObjectsByType<NetworkProp>(FindObjectsSortMode.None))
-                prop.SetGrabAllowed(building);
+                prop.SetGrabAllowed(building && !IsPaused.Value);
             foreach (var provider in FindObjectsByType<LocomotionProvider>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-                provider.enabled = !racing;
+                provider.enabled = !racing && !IsPaused.Value;
 
             if (racing)
                 FaceTheWall();

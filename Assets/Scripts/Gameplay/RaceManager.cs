@@ -59,7 +59,7 @@ namespace Projector.Gameplay
 
         public float FinishX => finishX;
         public float PitHeight => pitHeight;
-        public bool IsRunning => game.Phase.Value == GamePhase.Racing && startTime.Value > 0 && Now >= startTime.Value && !over.Value;
+        public bool IsRunning => !game.IsPaused.Value && game.Phase.Value == GamePhase.Racing && startTime.Value > 0 && Now >= startTime.Value && !over.Value;
         float Elapsed => (float)(Now - startTime.Value);
         double Now => NetworkManager.ServerTime.Time;
 
@@ -78,12 +78,20 @@ namespace Projector.Gameplay
 
         public string ClockText()
         {
+            if (game.IsPaused.Value)
+                return "PAUSED\nPut your headset on";
             if (startTime.Value < 0 || Now < startTime.Value)
                 return "Get ready...";
             if (over.Value)
                 return "Finished!";
             var remaining = Mathf.Max(0f, timeLimitSeconds - Elapsed);
             return $"Race to the gold platform!\n{(int)remaining / 60}:{(int)remaining % 60:00}";
+        }
+
+        public void PauseFor(float seconds)
+        {
+            if (IsServer && startTime.Value >= 0)
+                startTime.Value += seconds;
         }
 
         // Host only.

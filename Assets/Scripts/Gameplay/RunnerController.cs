@@ -76,7 +76,7 @@ namespace Projector.Gameplay
             var race = RaceManager.Current;
             var velocity = body.linearVelocity;
             velocity.z = 0f;
-            if (race == null || !race.IsRunning || finished)
+            if (race == null || ProjectorGame.Current == null || ProjectorGame.Current.IsPaused.Value || !race.IsRunning || finished)
             {
                 velocity.x = 0f;
                 body.linearVelocity = velocity;

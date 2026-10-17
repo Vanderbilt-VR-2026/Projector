@@ -2,6 +2,7 @@ using Projector.Networking;
 using Unity.Netcode;
 using Unity.XR.CoreUtils;
 using UnityEngine;
+using UnityEngine.XR;
 
 namespace Projector.Gameplay
 {
@@ -21,6 +22,8 @@ namespace Projector.Gameplay
         Transform rigHead;
         Transform[] rigLefts;
         Transform[] rigRights;
+        bool lastHeadAvailable;
+        bool hasReportedHeadAvailability;
 
         public override void OnNetworkSpawn()
         {
@@ -48,6 +51,7 @@ namespace Projector.Gameplay
         {
             if (IsOwner)
             {
+                PollHeadTracking();
                 if (rigHead == null)
                     return;
 
@@ -55,6 +59,23 @@ namespace Projector.Gameplay
                 CopyPose(rigLefts, leftHand);
                 CopyPose(rigRights, rightHand);
                 return;
+            }
+
+            void PollHeadTracking()
+            {
+                var device = InputDevices.GetDeviceAtXRNode(XRNode.Head);
+                var hasTracking = device.isValid && device.TryGetFeatureValue(CommonUsages.isTracked, out var isTracked);
+                var hasPresence = device.isValid && device.TryGetFeatureValue(CommonUsages.userPresence, out var userPresence);
+                var headAvailable = hasTracking && hasPresence && isTracked && userPresence;
+                if (hasReportedHeadAvailability && headAvailable == lastHeadAvailable)
+                    return;
+
+                if (ProjectorGame.Current == null || !IsSpawned)
+                    return;
+
+                lastHeadAvailable = headAvailable;
+                hasReportedHeadAvailability = true;
+                ProjectorGame.Current.ReportHeadTrackingRpc(headAvailable);
             }
 
             // Keep the name above the head and turned toward the local viewer.
