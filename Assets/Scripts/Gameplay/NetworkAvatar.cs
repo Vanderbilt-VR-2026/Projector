@@ -64,8 +64,10 @@ namespace Projector.Gameplay
             void PollHeadTracking()
             {
                 var device = InputDevices.GetDeviceAtXRNode(XRNode.Head);
-                var hasTracking = device.isValid && device.TryGetFeatureValue(CommonUsages.isTracked, out var isTracked);
-                var hasPresence = device.isValid && device.TryGetFeatureValue(CommonUsages.userPresence, out var userPresence);
+                var isTracked = false;
+                var userPresence = false;
+                var hasTracking = device.isValid && device.TryGetFeatureValue(CommonUsages.isTracked, out isTracked);
+                var hasPresence = device.isValid && device.TryGetFeatureValue(CommonUsages.userPresence, out userPresence);
                 var headAvailable = hasTracking && hasPresence && isTracked && userPresence;
                 if (hasReportedHeadAvailability && headAvailable == lastHeadAvailable)
                     return;
