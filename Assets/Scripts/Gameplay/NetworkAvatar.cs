@@ -61,30 +61,30 @@ namespace Projector.Gameplay
                 return;
             }
 
-            void PollHeadTracking()
-            {
-                var device = InputDevices.GetDeviceAtXRNode(XRNode.Head);
-                var isTracked = false;
-                var userPresence = false;
-                var hasTracking = device.isValid && device.TryGetFeatureValue(CommonUsages.isTracked, out isTracked);
-                var hasPresence = device.isValid && device.TryGetFeatureValue(CommonUsages.userPresence, out userPresence);
-                var headAvailable = hasTracking && hasPresence && isTracked && userPresence;
-                if (hasReportedHeadAvailability && headAvailable == lastHeadAvailable)
-                    return;
-
-                if (ProjectorGame.Current == null || !IsSpawned)
-                    return;
-
-                lastHeadAvailable = headAvailable;
-                hasReportedHeadAvailability = true;
-                ProjectorGame.Current.ReportHeadTrackingRpc(headAvailable);
-            }
-
             // Keep the name above the head and turned toward the local viewer.
             var viewer = Camera.main;
             nameLabel.position = head.position + Vector3.up * 0.28f;
             if (viewer != null)
                 nameLabel.rotation = Quaternion.LookRotation(nameLabel.position - viewer.transform.position);
+        }
+
+        void PollHeadTracking()
+        {
+            var device = InputDevices.GetDeviceAtXRNode(XRNode.Head);
+            var isTracked = false;
+            var userPresence = false;
+            var hasTracking = device.isValid && device.TryGetFeatureValue(CommonUsages.isTracked, out isTracked);
+            var hasPresence = device.isValid && device.TryGetFeatureValue(CommonUsages.userPresence, out userPresence);
+            var headAvailable = hasTracking && hasPresence && isTracked && userPresence;
+            if (hasReportedHeadAvailability && headAvailable == lastHeadAvailable)
+                return;
+
+            if (ProjectorGame.Current == null || !IsSpawned)
+                return;
+
+            lastHeadAvailable = headAvailable;
+            hasReportedHeadAvailability = true;
+            ProjectorGame.Current.ReportHeadTrackingRpc(headAvailable);
         }
 
         // Hands and controllers swap depending on what's tracked; follow whichever is active.
