@@ -306,14 +306,6 @@ namespace Projector.Editor
         // A faint pyramid of light from the lens to the screen corners.
         private static void CreateBeam(Transform parent, ProjectionCapture capture)
         {
-            var material = AssetDatabase.LoadAssetAtPath<Material>(ProjectionFolder + "/ProjectorBeam.mat");
-            if (material == null)
-            {
-                material = new Material(Shader.Find("Projector/Projector Beam"));
-                AssetDatabase.CreateAsset(material, ProjectionFolder + "/ProjectorBeam.mat");
-            }
-
-            var lens = capture.transform.position;
             Rect screen = capture.Screen;
             float x = capture.WallX + 0.02f;
             var corners = new[]
@@ -321,45 +313,7 @@ namespace Projector.Editor
                 new Vector3(x, screen.yMin, screen.xMin), new Vector3(x, screen.yMin, screen.xMax),
                 new Vector3(x, screen.yMax, screen.xMax), new Vector3(x, screen.yMax, screen.xMin)
             };
-
-            var vertices = new Vector3[8];
-            var colors = new Color[8];
-            var triangles = new int[12];
-            for (int i = 0; i < 4; i++)
-            {
-                vertices[i * 2] = lens;
-                vertices[i * 2 + 1] = corners[i];
-                colors[i * 2] = new Color(1f, 1f, 1f, 0.045f);
-                colors[i * 2 + 1] = new Color(1f, 1f, 1f, 0.006f);
-            }
-            // Each side: lens, this corner, next corner (the lens vertex is duplicated per side).
-            for (int i = 0; i < 4; i++)
-            {
-                triangles[i * 3] = i * 2;
-                triangles[i * 3 + 1] = i * 2 + 1;
-                triangles[i * 3 + 2] = ((i + 1) % 4) * 2 + 1;
-            }
-            const string meshPath = ProjectionFolder + "/ProjectorBeam.asset";
-            var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(meshPath);
-            if (mesh == null)
-            {
-                mesh = new Mesh { name = "Projector Beam" };
-                AssetDatabase.CreateAsset(mesh, meshPath);
-            }
-            mesh.Clear();
-            mesh.vertices = vertices;
-            mesh.colors = colors;
-            mesh.triangles = triangles;
-            mesh.RecalculateBounds();
-            EditorUtility.SetDirty(mesh);
-
-            var beam = new GameObject("Projector Beam");
-            beam.transform.SetParent(parent);
-            beam.AddComponent<MeshFilter>().sharedMesh = mesh;
-            var beamRenderer = beam.AddComponent<MeshRenderer>();
-            beamRenderer.sharedMaterial = material;
-            beamRenderer.shadowCastingMode = ShadowCastingMode.Off;
-            beamRenderer.receiveShadows = false;
+            SceneBuildUtility.CreateBeam("Projector Beam", parent, capture.transform.position, corners, ProjectionFolder + "/ProjectorBeam.asset");
         }
 
         // The game loop object, its race, and the HUD above the screen (status text + buttons, facing the room).
