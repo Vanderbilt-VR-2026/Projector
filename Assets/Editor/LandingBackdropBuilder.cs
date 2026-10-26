@@ -9,12 +9,13 @@ namespace Projector.Editor
     // The room around the landing menu, so the first thing players see explains the game: a dark projector
     // theater whose wall screen shows a level drawn from shadows, with runners racing across it; the table of
     // props that cast those shadows; the projector behind the player throwing its beam; and three cards for the
-    // steps (build, project, race). The menus are head-locked at 2 m, so the content sits around their edges.
+    // steps (build, project, race), then the menus themselves as step 4, to the player's right.
     // Re-running replaces the previous "Landing Backdrop".
     public static class LandingBackdropBuilder
     {
         private const string Folder = "Assets/Generated/Landing";
         private const string RootName = "Landing Backdrop";
+        public const string PlaySpotName = "Play Spot";
 
         // Room interior: the player stands at the origin facing +z, the screen is on the front wall.
         private const float FrontWallZ = 7f;
@@ -65,7 +66,7 @@ namespace Projector.Editor
         }
 
         // What the game projects: the props' shadows as platforms (same shapes as the table props), a coin over
-        // each, the four runners mid-race and the finish flag. Busy at the sides, where the menu doesn't cover it.
+        // each, the four runners mid-race and the finish flag.
         private static void CreateProjectedLevel(Transform parent)
         {
             Material shadow = CreateUnlitMaterial(Folder, "ProjectedShadow", new Color(0.1f, 0.1f, 0.12f));
@@ -81,7 +82,7 @@ namespace Projector.Editor
             {
                 (PrimitiveType.Cube, new Vector2(-3.4f, 1.05f), new Vector2(1.3f, 0.16f)),
                 (PrimitiveType.Cube, new Vector2(-2.35f, 1.55f), new Vector2(0.45f, 0.45f)),
-                (PrimitiveType.Cube, new Vector2(-1.2f, 2.0f), new Vector2(1.0f, 0.22f)),
+                (PrimitiveType.Cube, new Vector2(-1.5f, 1.85f), new Vector2(0.9f, 0.22f)),
                 (PrimitiveType.Cube, new Vector2(0f, 1.3f), new Vector2(0.3f, 1.0f)),
                 (PrimitiveType.Sphere, new Vector2(1.3f, 2.1f), new Vector2(0.5f, 0.5f)),
                 (PrimitiveType.Cube, new Vector2(2.4f, 1.6f), new Vector2(1.2f, 0.12f)),
@@ -112,7 +113,7 @@ namespace Projector.Editor
             CreateCube("Finish Flag", level.transform, new Vector3(3.69f, 1.8f, z - 0.02f), new Vector3(0.3f, 0.2f, 0.01f), flag, false);
 
             var banner = CreateWorldCanvas("Screen Banner", level.transform, new Vector2(4000f, 300f), null);
-            banner.transform.SetPositionAndRotation(new Vector3(0f, Screen.yMax - 0.32f, z - 0.03f), Quaternion.identity);
+            banner.transform.SetPositionAndRotation(new Vector3(0f, Screen.yMax - 0.22f, z - 0.03f), Quaternion.identity);
             Object.DestroyImmediate(banner.GetComponent<UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster>());
             SetFullSize(CreateText("PROJECTOR: WHERE 3D MEETS 2D", banner.transform, 190, new Color(0.1f, 0.1f, 0.12f)).rectTransform);
         }
@@ -184,23 +185,49 @@ namespace Projector.Editor
             }
         }
 
-        // The three steps of a round, each on a card facing the player: one over the table, two on the right.
+        // The steps of a round, left to right around the player: 1 over the table, 2 on the screen (between the
+        // level and the banner), 3 on the right, and 4 where the menus stand (see LandingMenu's menu anchor).
         private static void CreateStepCards(Transform parent)
         {
-            CreateStepCard(parent, -48f, "1", "BUILD", "Grab objects off the table and hold them in the projector's beam.");
-            CreateStepCard(parent, 50f, "2", "PROJECT", "Their shadows are cast on the wall as platforms, with a coin over each.");
-            CreateStepCard(parent, 92f, "3", "RACE", "Run and jump across the shadows. Grab coins, beat the others to the flag.");
+            CreateStepCard(parent, AroundPlayer(-45f, 3.1f, 1.75f), 0.0013f, "1", "BUILD", "Grab objects off the table and hold them in the projector's beam.");
+            CreateStepCard(parent, new Pose(new Vector3(0f, 2.95f, FrontWallZ - 0.16f), Quaternion.identity), 0.0026f, "2", "PROJECT", "Their shadows are cast on the wall as platforms, with a coin over each.");
+            CreateStepCard(parent, AroundPlayer(45f, 3.1f, 1.75f), 0.0013f, "3", "RACE", "Run and jump across the shadows. Grab coins, beat the others to the flag.");
+            CreatePlaySpot(parent);
         }
 
-        private static void CreateStepCard(Transform parent, float yaw, string number, string title, string body)
+        // Step 4: the menus stand here, and a "4 PLAY!" heading sits above them.
+        private static void CreatePlaySpot(Transform parent)
         {
-            const float distance = 3.1f;
+            var pose = AroundPlayer(88f, 1.8f, 1.45f);
+            var spot = new GameObject(PlaySpotName);
+            Undo.RegisterCreatedObjectUndo(spot, "Create " + PlaySpotName);
+            spot.transform.SetParent(parent);
+            spot.transform.SetPositionAndRotation(pose.position, pose.rotation);
+
+            var heading = CreateWorldCanvas("Step 4 - PLAY", spot.transform, new Vector2(900f, 160f), null);
+            Object.DestroyImmediate(heading.GetComponent<UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster>());
+            heading.transform.localPosition = new Vector3(0f, 0.62f, 0f);
+            var number = CreateText("4", heading.transform, 130, AccentColor);
+            SetAnchors(number.rectTransform, new Vector2(0f, 0f), new Vector2(0.35f, 1f));
+            number.alignment = TextAnchor.MiddleRight;
+            var title = CreateText("PLAY!", heading.transform, 110, Color.white);
+            SetAnchors(title.rectTransform, new Vector2(0.4f, 0f), new Vector2(1f, 1f));
+            title.alignment = TextAnchor.MiddleLeft;
+        }
+
+        // Facing the player from `yaw` degrees right of straight ahead.
+        private static Pose AroundPlayer(float yaw, float distance, float height)
+        {
             var direction = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+            return new Pose(direction * distance + Vector3.up * height, Quaternion.LookRotation(direction));
+        }
+
+        private static void CreateStepCard(Transform parent, Pose pose, float scale, string number, string title, string body)
+        {
             var canvas = CreateWorldCanvas("Step " + number + " - " + title, parent, new Vector2(900f, 560f), null);
             Object.DestroyImmediate(canvas.GetComponent<UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster>());
-            canvas.transform.SetPositionAndRotation(direction * distance + Vector3.up * 1.75f, Quaternion.LookRotation(direction));
-            // A bit over 1 m wide, readable from where the player stands.
-            canvas.transform.localScale = Vector3.one * 0.0013f;
+            canvas.transform.SetPositionAndRotation(pose.position, pose.rotation);
+            canvas.transform.localScale = Vector3.one * scale;
 
             var panel = CreatePanel("Panel", canvas.transform);
             panel.GetComponent<Image>().raycastTarget = false;

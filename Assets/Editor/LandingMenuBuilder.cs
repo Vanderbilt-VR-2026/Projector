@@ -207,9 +207,22 @@ public static class LandingMenuBuilder
         SetPrivateReferences(controller, camera, landingMenu.transform, joinMenu.transform, lobbyMenu.transform, randomGameMenu.transform, lobbyMenuController, lobbyCodeText, playerListText, joinMenuController, codeInput, randomGameMenuController);
         SetReference(controller, "statusText", statusText);
         SetReference(lobbyMenuController, "startButton", startGameButton);
+        PlaceMenusAtPlaySpot(controller, landingMenu.transform, joinMenu.transform, lobbyMenu.transform, randomGameMenu.transform);
         EnsureEventSystem();
         Selection.activeGameObject = landingMenu;
         EditorSceneManager.MarkSceneDirty(landingMenu.scene);
+    }
+
+    // The menus stand at the backdrop's step 4 instead of following the head (LandingMenu re-applies this at runtime).
+    static void PlaceMenusAtPlaySpot(LandingMenu controller, params Transform[] menus)
+    {
+        var playSpot = GameObject.Find(LandingBackdropBuilder.PlaySpotName);
+        SetReference(controller, "menuAnchor", playSpot != null ? playSpot.transform : null);
+        if (playSpot == null)
+            return;
+
+        foreach (var menu in menus)
+            menu.SetPositionAndRotation(playSpot.transform.position, playSpot.transform.rotation);
     }
 
     static GameObject CreateCanvas(string objectName, Transform parent, Camera camera)
