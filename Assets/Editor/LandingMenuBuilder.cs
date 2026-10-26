@@ -221,8 +221,13 @@ public static class LandingMenuBuilder
         if (playSpot == null)
             return;
 
+        // Through the RectTransform: a plain Transform position on a canvas root doesn't survive the scene save.
         foreach (var menu in menus)
-            menu.SetPositionAndRotation(playSpot.transform.position, playSpot.transform.rotation);
+        {
+            var rect = (RectTransform)menu;
+            rect.anchoredPosition3D = rect.parent.InverseTransformPoint(playSpot.transform.position);
+            rect.rotation = playSpot.transform.rotation;
+        }
     }
 
     static GameObject CreateCanvas(string objectName, Transform parent, Camera camera)
