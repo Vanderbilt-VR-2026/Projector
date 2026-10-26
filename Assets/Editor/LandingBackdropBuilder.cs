@@ -114,7 +114,7 @@ namespace Projector.Editor
             var banner = CreateWorldCanvas("Screen Banner", level.transform, new Vector2(4000f, 300f), null);
             banner.transform.SetPositionAndRotation(new Vector3(0f, Screen.yMax - 0.32f, z - 0.03f), Quaternion.identity);
             Object.DestroyImmediate(banner.GetComponent<UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster>());
-            SetFullSize(CreateText("THE SHADOWS YOU CAST BECOME THE LEVEL", banner.transform, 190, new Color(0.1f, 0.1f, 0.12f)).rectTransform);
+            SetFullSize(CreateText("PROJECTOR: WHERE 3D MEETS 2D", banner.transform, 190, new Color(0.1f, 0.1f, 0.12f)).rectTransform);
         }
 
         // Behind the player, high up like a cinema projector, so its beam passes overhead onto the screen.
@@ -188,7 +188,7 @@ namespace Projector.Editor
         private static void CreateStepCards(Transform parent)
         {
             CreateStepCard(parent, -48f, "1", "BUILD", "Grab objects off the table and hold them in the projector's beam.");
-            CreateStepCard(parent, 50f, "2", "PROJECT", "Their shadows lock in on the wall as platforms, with a coin over each.");
+            CreateStepCard(parent, 50f, "2", "PROJECT", "Their shadows are cast on the wall as platforms, with a coin over each.");
             CreateStepCard(parent, 92f, "3", "RACE", "Run and jump across the shadows. Grab coins, beat the others to the flag.");
         }
 
