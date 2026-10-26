@@ -26,16 +26,18 @@ namespace Projector.Gameplay
         {
             body = GetComponent<Rigidbody>();
             capsule = GetComponent<CapsuleCollider>();
+
+            // Runners pass through each other; the race is against the level, not body-blocking. A layer that
+            // ignores itself covers every pair, whatever order the runners spawn in.
+            gameObject.layer = RunnerLayer;
+            Physics.IgnoreLayerCollision(RunnerLayer, RunnerLayer);
         }
+
+        static int RunnerLayer => LayerMask.NameToLayer("Runner");
 
         public override void OnNetworkSpawn()
         {
             body.isKinematic = !IsOwner;
-
-            // Runners pass through each other; the race is against the level, not body-blocking.
-            foreach (var other in FindObjectsByType<RunnerController>(FindObjectsSortMode.None))
-                if (other != this)
-                    Physics.IgnoreCollision(capsule, other.capsule);
 
             if (!IsOwner)
                 return;
@@ -147,12 +149,13 @@ namespace Projector.Gameplay
             }
         }
 
+        // Level geometry only: another runner underfoot isn't ground, so nobody can stand or jump on a head.
         bool IsGrounded()
         {
             var radius = capsule.radius * transform.lossyScale.x * 0.9f;
             var halfHeight = capsule.height * transform.lossyScale.y / 2f;
             return Physics.SphereCast(transform.position, radius, Vector3.down, out _, halfHeight - radius + 0.08f,
-                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                Physics.DefaultRaycastLayers & ~(1 << RunnerLayer), QueryTriggerInteraction.Ignore);
         }
 
         void Respawn()
