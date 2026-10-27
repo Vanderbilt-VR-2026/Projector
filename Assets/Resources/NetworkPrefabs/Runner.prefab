@@ -17,7 +17,7 @@ GameObject:
   - component: {fileID: 6213782286279913128}
   - component: {fileID: 2830178050789813117}
   - component: {fileID: 3498176659183459572}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Runner
   m_TagString: Untagged
   m_Icon: {fileID: 0}

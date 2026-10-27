@@ -68,8 +68,6 @@ namespace Projector.Editor
             Material visor = CreateUnlitMaterial(ProjectionFolder, "RunnerVisor", new Color(0.92f, 0.96f, 1f));
 
             var root = CreatePrimitive(PrimitiveType.Capsule, "Runner", null, Vector3.zero, Vector3.one * 0.6f, Vector3.zero, fill, true);
-            // Runner-runner collisions are off on this layer (see RunnerController).
-            root.layer = LayerMask.NameToLayer("Runner");
             root.GetComponent<CapsuleCollider>().sharedMaterial = CreateFrictionlessMaterial();
             root.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 

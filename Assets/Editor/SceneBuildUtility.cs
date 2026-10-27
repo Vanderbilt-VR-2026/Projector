@@ -89,60 +89,6 @@ namespace Projector.Editor
             RenderSettings.fog = false;
         }
 
-        // A faint pyramid of light from `lens` to the four `corners` of a projected image, drawn with the
-        // Projector Beam shader. The mesh is saved at `meshPath` (updated in place on a rebuild).
-        public static GameObject CreateBeam(string name, Transform parent, Vector3 lens, Vector3[] corners, string meshPath)
-        {
-            const string materialPath = "Assets/Generated/Projection/ProjectorBeam.mat";
-            EnsureFolder("Assets/Generated/Projection");
-            var material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
-            if (material == null)
-            {
-                material = new Material(Shader.Find("Projector/Projector Beam"));
-                AssetDatabase.CreateAsset(material, materialPath);
-            }
-
-            var vertices = new Vector3[8];
-            var colors = new Color[8];
-            var triangles = new int[12];
-            for (int i = 0; i < 4; i++)
-            {
-                vertices[i * 2] = lens;
-                vertices[i * 2 + 1] = corners[i];
-                colors[i * 2] = new Color(1f, 1f, 1f, 0.045f);
-                colors[i * 2 + 1] = new Color(1f, 1f, 1f, 0.006f);
-            }
-            // Each side: lens, this corner, next corner (the lens vertex is duplicated per side).
-            for (int i = 0; i < 4; i++)
-            {
-                triangles[i * 3] = i * 2;
-                triangles[i * 3 + 1] = i * 2 + 1;
-                triangles[i * 3 + 2] = ((i + 1) % 4) * 2 + 1;
-            }
-            var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(meshPath);
-            if (mesh == null)
-            {
-                mesh = new Mesh { name = name };
-                AssetDatabase.CreateAsset(mesh, meshPath);
-            }
-            mesh.Clear();
-            mesh.vertices = vertices;
-            mesh.colors = colors;
-            mesh.triangles = triangles;
-            mesh.RecalculateBounds();
-            EditorUtility.SetDirty(mesh);
-
-            var beam = new GameObject(name);
-            Undo.RegisterCreatedObjectUndo(beam, "Create " + name);
-            beam.transform.SetParent(parent);
-            beam.AddComponent<MeshFilter>().sharedMesh = mesh;
-            var beamRenderer = beam.AddComponent<MeshRenderer>();
-            beamRenderer.sharedMaterial = material;
-            beamRenderer.shadowCastingMode = ShadowCastingMode.Off;
-            beamRenderer.receiveShadows = false;
-            return beam;
-        }
-
         // ---------- Assets ----------
 
         // Updates an existing material in place so its GUID (and every scene that references it) survives a rebuild.
