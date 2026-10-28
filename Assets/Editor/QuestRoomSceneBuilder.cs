@@ -44,7 +44,7 @@ namespace Projector.Editor
             Material wall = CreateMaterial("TheaterWall", new Color(0.05f, 0.045f, 0.045f), 0.05f, 0f);
             Material carpet = CreateMaterial("Carpet", new Color(0.09f, 0.03f, 0.03f), 0.02f, 0f);
             Material stage = CreateWoodMaterial(GeneratedFolder, "StageFloor", new Vector2(10.5f / 0.6f, (StageMaxZ - StageMinZ) / 2.4f), Color.white);
-            Material seat = CreateMaterial("SeatRed", new Color(0.3f, 0.04f, 0.05f), 0.15f, 0f);
+            Material seat = CreateVertexColorMaterial("SeatVelvet");
             Material curtain = CreateMaterial("CurtainRed", new Color(0.36f, 0.04f, 0.05f), 0.25f, 0f);
             curtain.SetFloat("_Cull", (float)CullMode.Off);
             Material gold = CreateMaterial("DarkGold", new Color(0.45f, 0.32f, 0.1f), 0.5f, 0.6f);
@@ -56,7 +56,7 @@ namespace Projector.Editor
 
             CreateRoom(wall, carpet, stage);
             CreateStageBounds();
-            CreateSeats(seat);
+            CreateSeats(seat, carpet);
             CreateCurtains(curtain, gold);
             CreateTable(wood, metal);
             CreateProjector(projectorBody, metal, lens, aluminum);
@@ -144,44 +144,92 @@ namespace Projector.Editor
             bound.AddComponent<BoxCollider>().size = size;
         }
 
-        // Rows of seats facing the stage, combined into one mesh (one draw call), with an aisle down the middle.
-        private static void CreateSeats(Material material)
+        // Rows of plush seats facing the stage, rising like a stadium (each row a little steeper than the last) on
+        // carpeted risers, with an aisle down the middle. Cushion, back and arm are low-poly rounded boxes; all the
+        // seats are one mesh and all the risers another, so the whole audience is two draw calls.
+        private static void CreateSeats(Material velvet, Material carpet)
         {
-            const int rows = 20, columns = 50;
-            const float firstRowX = StageFrontX + 2f, rowSpacing = 1.05f, seatSpacing = 0.6f;
+            const int rows = 16, columns = 40;
+            const float firstRowX = StageFrontX + 2.5f, rowSpacing = 1.2f, seatSpacing = 0.72f;
             float centerZ = (ScreenMinZ + ScreenMaxZ) / 2f;
+            float rowWidth = columns * seatSpacing + 0.6f;
 
+            Mesh plush = CreateRoundedBoxMesh(GeneratedFolder + "/PlushBox.asset", 3, 0.25f);
+            Mesh arm = CreateRoundedBoxMesh(GeneratedFolder + "/ArmRest.asset", 2, 0.3f);
             var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
             Mesh cubeMesh = cube.GetComponent<MeshFilter>().sharedMesh;
             Object.DestroyImmediate(cube);
 
-            var parts = new List<CombineInstance>();
+            var seats = new List<CombineInstance>();
+            var risers = new List<CombineInstance>();
             for (int row = 0; row < rows; row++)
             {
+                float rowX = firstRowX + row * rowSpacing;
+                float rowY = AudienceFloorY + row * 0.3f + row * row * 0.015f;
+                if (rowY > AudienceFloorY)
+                    risers.Add(Part(cubeMesh, new Vector3(rowX, (AudienceFloorY + rowY) / 2f, centerZ), Quaternion.identity, new Vector3(rowSpacing, rowY - AudienceFloorY, rowWidth)));
+
                 for (int column = 0; column < columns; column++)
                 {
                     if (column == columns / 2 - 1 || column == columns / 2)
                         continue;
-                    var seat = new Vector3(firstRowX + row * rowSpacing, AudienceFloorY, centerZ + (column - (columns - 1) / 2f) * seatSpacing);
-                    // Cushion, then the back on the far side from the stage (seats face -x).
-                    parts.Add(new CombineInstance { mesh = cubeMesh, transform = Matrix4x4.TRS(seat + new Vector3(0f, 0.42f, 0f), Quaternion.identity, new Vector3(0.48f, 0.12f, 0.5f)) });
-                    parts.Add(new CombineInstance { mesh = cubeMesh, transform = Matrix4x4.TRS(seat + new Vector3(0.25f, 0.72f, 0f), Quaternion.Euler(0f, 0f, -8f), new Vector3(0.08f, 0.62f, 0.5f)) });
+                    var seat = new Vector3(rowX, rowY, centerZ + (column - (columns - 1) / 2f) * seatSpacing);
+                    risers.Add(Part(cubeMesh, seat + new Vector3(0.05f, 0.15f, 0f), Quaternion.identity, new Vector3(0.3f, 0.3f, 0.36f)));
+                    // Cushion, the back leaning away from the stage (seats face -x), and the arm on one side.
+                    seats.Add(Part(plush, seat + new Vector3(0f, 0.4f, 0f), Quaternion.identity, new Vector3(0.58f, 0.22f, 0.6f)));
+                    seats.Add(Part(plush, seat + new Vector3(0.3f, 0.86f, 0f), Quaternion.Euler(0f, 0f, -10f), new Vector3(0.2f, 0.82f, 0.62f)));
+                    seats.Add(Part(arm, seat + new Vector3(0.08f, 0.62f, seatSpacing / 2f), Quaternion.identity, new Vector3(0.56f, 0.1f, 0.1f)));
                 }
             }
 
-            Mesh mesh = LoadOrCreateMesh(GeneratedFolder + "/Seats.asset", "Seats");
-            mesh.indexFormat = IndexFormat.UInt32;
-            mesh.CombineMeshes(parts.ToArray(), true, true);
-            mesh.RecalculateBounds();
-            EditorUtility.SetDirty(mesh);
+            Mesh seatMesh = CombineIntoMesh(GeneratedFolder + "/Seats.asset", seats);
+            ShadeVelvet(seatMesh, firstRowX, firstRowX + rows * rowSpacing);
+            var root = new GameObject("Seating");
+            CreateMeshObject("Seats", root.transform, seatMesh, velvet);
+            CreateMeshObject("Risers", root.transform, CombineIntoMesh(GeneratedFolder + "/SeatRisers.asset", risers), carpet);
+            foreach (Transform child in root.transform)
+                GameObjectUtility.SetStaticEditorFlags(child.gameObject, StaticEditorFlags.BatchingStatic);
+        }
 
-            var seats = new GameObject("Seats");
-            seats.AddComponent<MeshFilter>().sharedMesh = mesh;
-            var seatRenderer = seats.AddComponent<MeshRenderer>();
-            seatRenderer.sharedMaterial = material;
-            seatRenderer.shadowCastingMode = ShadowCastingMode.Off;
-            seatRenderer.receiveShadows = false;
-            GameObjectUtility.SetStaticEditorFlags(seats, StaticEditorFlags.BatchingStatic);
+        // Bakes red velvet shading into the seats' vertex colors, as if lit softly from above the stage, so the
+        // fronts the players look at read red without any light reaching the audience at runtime. Rows darken
+        // toward the back, fading into black on top of the fog.
+        private static void ShadeVelvet(Mesh mesh, float frontX, float backX)
+        {
+            var velvet = new Color(0.34f, 0.014f, 0.025f);
+            var toLight = new Vector3(-1f, 0.9f, 0.25f).normalized;
+            var normals = mesh.normals;
+            var vertices = mesh.vertices;
+            var colors = new Color[normals.Length];
+            for (int i = 0; i < normals.Length; i++)
+            {
+                float shade = 0.25f + 0.75f * Mathf.Max(0f, Vector3.Dot(normals[i], toLight));
+                float fade = 1f - 0.9f * Mathf.InverseLerp(frontX, backX, vertices[i].x);
+                colors[i] = velvet * shade * fade;
+                colors[i].a = 1f;
+            }
+            mesh.colors = colors;
+            EditorUtility.SetDirty(mesh);
+        }
+
+        // Unlit, tinted by vertex color, and fogged: URP's particle unlit shader, used here for baked shading.
+        private static Material CreateVertexColorMaterial(string name)
+        {
+            string path = GeneratedFolder + "/" + name + ".mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit")) { name = name };
+                AssetDatabase.CreateAsset(material, path);
+            }
+            material.SetColor("_BaseColor", Color.white);
+            EditorUtility.SetDirty(material);
+            return material;
+        }
+
+        private static CombineInstance Part(Mesh mesh, Vector3 position, Quaternion rotation, Vector3 scale)
+        {
+            return new CombineInstance { mesh = mesh, transform = Matrix4x4.TRS(position, rotation, scale) };
         }
 
         // A curtain on either side of the screen, gathered toward the outside and tied with gold rope, and a
@@ -258,17 +306,6 @@ namespace Projector.Editor
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
             EditorUtility.SetDirty(mesh);
-            return mesh;
-        }
-
-        private static Mesh LoadOrCreateMesh(string path, string name)
-        {
-            var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(path);
-            if (mesh == null)
-            {
-                mesh = new Mesh { name = name };
-                AssetDatabase.CreateAsset(mesh, path);
-            }
             return mesh;
         }
 
@@ -353,7 +390,7 @@ namespace Projector.Editor
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = Color.black;
             RenderSettings.fogStartDistance = 14f;
-            RenderSettings.fogEndDistance = 32f;
+            RenderSettings.fogEndDistance = 28f;
         }
 
         private static void CreateXrRig()

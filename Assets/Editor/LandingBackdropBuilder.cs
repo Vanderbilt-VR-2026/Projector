@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Projector.Gameplay;
 using UnityEditor;
 using UnityEngine;
@@ -56,7 +57,7 @@ namespace Projector.Editor
             CreateCounter(root.transform, wood, counterTop);
             CreateBoothHeader(root.transform, red, gold);
             CreatePopcornMachine(root.transform, wood, trim, gold);
-            CreateFramedPoster(root.transform, trim);
+            CreateFramedPoster(root.transform, counterTop, gold, red);
             CreatePlaySpot(root.transform);
             return root;
         }
@@ -96,12 +97,55 @@ namespace Projector.Editor
                 ("RACE", "Run and jump across the shadows. Grab coins, beat the others to the flag."),
                 ("PLAY", "Host or join a game on the menu at the counter.")
             };
-            const float posterWidth = 1.6f, gap = 0.3f;
+            const float posterWidth = 1.6f, posterHeight = 1.2f, gap = 0.3f;
+            var centers = new Vector3[steps.Length];
             for (int i = 0; i < steps.Length; i++)
             {
-                float x = (i - (steps.Length - 1) / 2f) * (posterWidth + gap);
-                CreatePoster(header.transform, new Vector3(x, (bottom + top) / 2f, -0.06f), (i + 1).ToString(), steps[i].title, steps[i].body);
+                centers[i] = new Vector3((i - (steps.Length - 1) / 2f) * (posterWidth + gap), (bottom + top) / 2f, -0.06f);
+                CreatePoster(header.transform, centers[i], (i + 1).ToString(), steps[i].title, steps[i].body);
             }
+            CreateMarqueeLights(header.transform, centers, posterWidth, posterHeight);
+        }
+
+        // Marquee bulbs around each poster, with a warm glow on the board behind it. No real lights: the bulbs are
+        // unlit, the glow is an additive soft-edged rectangle, and each is one combined mesh for all four posters.
+        private static void CreateMarqueeLights(Transform parent, Vector3[] posterCenters, float posterWidth, float posterHeight)
+        {
+            Material bulb = CreateUnlitMaterial(Folder, "MarqueeBulb", new Color(1f, 0.86f, 0.55f));
+            Material glow = CreateGlowMaterial(Folder, "PosterGlow", new Color(1f, 0.72f, 0.38f), 0.4f);
+            // Before the posters' canvases (queue 3000), so the glow only lights the board around them.
+            glow.renderQueue = 2990;
+            Mesh bulbMesh = CreateRoundedBoxMesh(Folder + "/Bulb.asset", 2, 0.5f);
+            Mesh glowMesh = CreateSoftRectMesh(Folder + "/PosterGlow.asset", posterWidth + 0.2f, posterHeight + 0.2f, 0.18f);
+
+            const float inset = 0.1f, spacing = 0.15f, size = 0.05f;
+            float halfWidth = posterWidth / 2f + inset, halfHeight = posterHeight / 2f + inset;
+            var bulbs = new List<CombineInstance>();
+            var glows = new List<CombineInstance>();
+            foreach (var center in posterCenters)
+            {
+                glows.Add(new CombineInstance { mesh = glowMesh, transform = Matrix4x4.Translate(center + new Vector3(0f, 0f, 0.008f)) });
+                int across = Mathf.RoundToInt(halfWidth * 2f / spacing), down = Mathf.RoundToInt(halfHeight * 2f / spacing);
+                for (int i = 0; i <= across; i++)
+                {
+                    float x = -halfWidth + i * halfWidth * 2f / across;
+                    AddBulb(bulbs, bulbMesh, center + new Vector3(x, halfHeight, -0.04f), size);
+                    AddBulb(bulbs, bulbMesh, center + new Vector3(x, -halfHeight, -0.04f), size);
+                }
+                for (int j = 1; j < down; j++)
+                {
+                    float y = -halfHeight + j * halfHeight * 2f / down;
+                    AddBulb(bulbs, bulbMesh, center + new Vector3(-halfWidth, y, -0.04f), size);
+                    AddBulb(bulbs, bulbMesh, center + new Vector3(halfWidth, y, -0.04f), size);
+                }
+            }
+            CreateMeshObject("Poster Glow", parent, CombineIntoMesh(Folder + "/PosterGlows.asset", glows), glow);
+            CreateMeshObject("Marquee Bulbs", parent, CombineIntoMesh(Folder + "/MarqueeBulbs.asset", bulbs), bulb);
+        }
+
+        private static void AddBulb(List<CombineInstance> bulbs, Mesh mesh, Vector3 position, float size)
+        {
+            bulbs.Add(new CombineInstance { mesh = mesh, transform = Matrix4x4.TRS(position, Quaternion.identity, Vector3.one * size) });
         }
 
         // An old theater poster: cream paper in a red border, a big red step number, a title and one line of how-to.
@@ -189,7 +233,7 @@ namespace Projector.Editor
 
         // On the left wall: a framed black-and-white poster, "PROJECTOR" across the top, with the runners hopping
         // along a shadow ground from the start line to the finish flag and reappearing back at the start.
-        private static void CreateFramedPoster(Transform parent, Material frame)
+        private static void CreateFramedPoster(Transform parent, Material frame, Material gold, Material velvet)
         {
             Material paper = CreateUnlitMaterial(Folder, "PosterPaper", new Color(0.8f, 0.8f, 0.78f));
             Material ink = CreateUnlitMaterial(Folder, "PosterInk", new Color(0.12f, 0.12f, 0.12f));
@@ -200,12 +244,9 @@ namespace Projector.Editor
             // Facing into the room: local +x runs toward the front of the room, local -z toward the viewer.
             poster.transform.SetPositionAndRotation(new Vector3(RoomCenter.x - RoomSize.x / 2f + 0.12f, 1.9f, 0.6f), Quaternion.LookRotation(Vector3.left));
 
-            const float width = 1.5f, height = 1.05f, bar = 0.08f;
+            const float width = 1.5f, height = 1.05f;
             CreateCube("Paper", poster.transform, Vector3.zero, new Vector3(width, height, 0.01f), paper, false);
-            CreateCube("Frame Top", poster.transform, new Vector3(0f, (height + bar) / 2f, -0.01f), new Vector3(width + bar * 2f, bar, 0.05f), frame, false);
-            CreateCube("Frame Bottom", poster.transform, new Vector3(0f, -(height + bar) / 2f, -0.01f), new Vector3(width + bar * 2f, bar, 0.05f), frame, false);
-            CreateCube("Frame Left", poster.transform, new Vector3(-(width + bar) / 2f, 0f, -0.01f), new Vector3(bar, height, 0.05f), frame, false);
-            CreateCube("Frame Right", poster.transform, new Vector3((width + bar) / 2f, 0f, -0.01f), new Vector3(bar, height, 0.05f), frame, false);
+            CreateGildedFrame(poster.transform, width, height, frame, gold, velvet);
 
             var title = CreateWorldCanvas("Title", poster.transform, new Vector2(1400f, 220f), null);
             Object.DestroyImmediate(title.GetComponent<UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster>());
@@ -234,6 +275,46 @@ namespace Projector.Editor
                 SetFloat(loop, "finishX", finishX);
                 SetFloat(loop, "speed", speeds[i]);
             }
+        }
+
+        // A gilded picture frame around a width x height picture: a red velvet mat, a thin gold lip, a deep dark
+        // molding, a broad gold outer molding with rosettes at the corners, and a gold crest with a medallion on top.
+        private static void CreateGildedFrame(Transform parent, float width, float height, Material molding, Material gold, Material velvet)
+        {
+            Mesh round = CreateRoundedBoxMesh(Folder + "/Bulb.asset", 2, 0.5f);
+            const float mat = 0.08f, lip = 0.03f, main = 0.12f, outer = 0.06f;
+            CreateCube("Velvet Mat", parent, new Vector3(0f, 0f, 0.008f), new Vector3(width + mat * 2f, height + mat * 2f, 0.01f), velvet, false);
+            float w = width + mat * 2f, h = height + mat * 2f;
+            CreateFrameRing(parent, "Gold Lip", w, h, lip, 0.04f, -0.015f, gold);
+            w += lip * 2f; h += lip * 2f;
+            CreateFrameRing(parent, "Molding", w, h, main, 0.06f, -0.025f, molding);
+            w += main * 2f; h += main * 2f;
+            CreateFrameRing(parent, "Gold Molding", w, h, outer, 0.09f, -0.04f, gold);
+
+            float cornerX = (w + outer) / 2f, cornerY = (h + outer) / 2f;
+            for (int i = 0; i < 4; i++)
+            {
+                var rosette = CreateMeshObject("Rosette", parent, round, gold).transform;
+                rosette.SetLocalPositionAndRotation(new Vector3(i % 2 == 0 ? -cornerX : cornerX, i < 2 ? -cornerY : cornerY, -0.08f), Quaternion.identity);
+                rosette.localScale = Vector3.one * 0.15f;
+            }
+
+            // A half disc rising behind the top of the frame (its lower half hides behind the moldings).
+            float top = h / 2f + outer;
+            CreateCylinder("Crest", parent, new Vector3(0f, top, 0.01f), new Vector3(0.6f, 0.01f, 0.6f), new Vector3(90f, 0f, 0f), gold, false);
+            var medallion = CreateMeshObject("Medallion", parent, CreateRoundedBoxMesh(Folder + "/Jewel.asset", 5, 0.5f), velvet).transform;
+            medallion.SetLocalPositionAndRotation(new Vector3(0f, top + 0.12f, -0.01f), Quaternion.identity);
+            medallion.localScale = new Vector3(0.14f, 0.14f, 0.04f);
+            CreateCylinder("Medallion Rim", parent, new Vector3(0f, top + 0.12f, 0f), new Vector3(0.19f, 0.01f, 0.19f), new Vector3(90f, 0f, 0f), gold, false);
+        }
+
+        // Four bars of `bar` width around an inner width x height opening, `depth` deep, centered at local z.
+        private static void CreateFrameRing(Transform parent, string name, float width, float height, float bar, float depth, float z, Material material)
+        {
+            CreateCube(name + " Top", parent, new Vector3(0f, (height + bar) / 2f, z), new Vector3(width + bar * 2f, bar, depth), material, false);
+            CreateCube(name + " Bottom", parent, new Vector3(0f, -(height + bar) / 2f, z), new Vector3(width + bar * 2f, bar, depth), material, false);
+            CreateCube(name + " Left", parent, new Vector3(-(width + bar) / 2f, 0f, z), new Vector3(bar, height, depth), material, false);
+            CreateCube(name + " Right", parent, new Vector3((width + bar) / 2f, 0f, z), new Vector3(bar, height, depth), material, false);
         }
 
         // The menus stand here, in front of the middle of the counter (see LandingMenu's menu anchor).

@@ -398,63 +398,11 @@ namespace Projector.Editor
             return pull;
         }
 
-        // A square of warm light on the wall with soft edges (a 4 x 4 vertex grid whose outer ring is transparent,
-        // drawn additively with the beam shader), with the rope's instructions on it in black.
+        // A square of warm light on the wall with soft edges, with the rope's instructions on it in black.
         private static Text CreateLightSquare(Transform parent)
         {
-            const string materialPath = ProjectionFolder + "/LightSquare.mat";
-            var material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
-            if (material == null)
-            {
-                material = new Material(Shader.Find("Projector/Projector Beam"));
-                AssetDatabase.CreateAsset(material, materialPath);
-            }
-            material.SetColor("_Tint", new Color(1f, 0.92f, 0.76f));
-            material.SetFloat("_Intensity", 0.75f);
-            EditorUtility.SetDirty(material);
-
-            const float size = 1.3f, fuzz = 0.2f;
-            float[] edges = { -size / 2f - fuzz, -size / 2f + fuzz, size / 2f - fuzz, size / 2f + fuzz };
-            var vertices = new Vector3[16];
-            var colors = new Color[16];
-            for (int y = 0; y < 4; y++)
-            {
-                for (int x = 0; x < 4; x++)
-                {
-                    vertices[y * 4 + x] = new Vector3(edges[x], edges[y], 0f);
-                    bool inner = x is 1 or 2 && y is 1 or 2;
-                    colors[y * 4 + x] = new Color(1f, 1f, 1f, inner ? 1f : 0f);
-                }
-            }
-            var triangles = new int[9 * 6];
-            for (int y = 0, t = 0; y < 3; y++)
-            {
-                for (int x = 0; x < 3; x++, t += 6)
-                {
-                    // Split each corner cell along the diagonal through its lit inner corner, so the fade has no crease.
-                    int i = y * 4 + x;
-                    bool alongMain = x == y;
-                    triangles[t] = i;
-                    triangles[t + 1] = i + 4;
-                    triangles[t + 2] = alongMain ? i + 5 : i + 1;
-                    triangles[t + 3] = alongMain ? i : i + 1;
-                    triangles[t + 4] = i + 5;
-                    triangles[t + 5] = alongMain ? i + 1 : i + 4;
-                }
-            }
-            const string meshPath = ProjectionFolder + "/LightSquare.asset";
-            var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(meshPath);
-            if (mesh == null)
-            {
-                mesh = new Mesh { name = "Light Square" };
-                AssetDatabase.CreateAsset(mesh, meshPath);
-            }
-            mesh.Clear();
-            mesh.vertices = vertices;
-            mesh.colors = colors;
-            mesh.triangles = triangles;
-            mesh.RecalculateBounds();
-            EditorUtility.SetDirty(mesh);
+            Material material = CreateGlowMaterial(ProjectionFolder, "LightSquare", new Color(1f, 0.92f, 0.76f), 0.75f);
+            Mesh mesh = CreateSoftRectMesh(ProjectionFolder + "/LightSquare.asset", 1.3f, 1.3f, 0.2f);
 
             // Facing into the room (local -z toward the viewer).
             var square = new GameObject("Light Square");

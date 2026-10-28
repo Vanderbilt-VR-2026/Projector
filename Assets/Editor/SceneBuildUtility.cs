@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Projector.Networking;
 using Unity.Netcode;
@@ -141,6 +142,151 @@ namespace Projector.Editor
             beamRenderer.shadowCastingMode = ShadowCastingMode.Off;
             beamRenderer.receiveShadows = false;
             return beam;
+        }
+
+        // A unit box (-0.5..0.5) with rounded edges and corners of `radius`, `segments` quads across each face: a
+        // low-poly building block for soft shapes (radius 0.5 gives a sphere). Saved at `meshPath`, updated in place.
+        public static Mesh CreateRoundedBoxMesh(string meshPath, int segments, float radius)
+        {
+            var vertices = new List<Vector3>();
+            var normals = new List<Vector3>();
+            var triangles = new List<int>();
+            float inner = 0.5f - radius;
+            Vector3[] faces = { Vector3.right, Vector3.left, Vector3.up, Vector3.down, Vector3.forward, Vector3.back };
+            foreach (var normal in faces)
+            {
+                // Two axes spanning the face, chosen so every face winds outward.
+                var u = new Vector3(normal.y, normal.z, normal.x);
+                var v = Vector3.Cross(normal, u);
+                int start = vertices.Count;
+                for (int j = 0; j <= segments; j++)
+                {
+                    for (int i = 0; i <= segments; i++)
+                    {
+                        var onCube = normal * 0.5f + u * (i / (float)segments - 0.5f) + v * (j / (float)segments - 0.5f);
+                        var core = Vector3.Max(-Vector3.one * inner, Vector3.Min(Vector3.one * inner, onCube));
+                        var outward = onCube - core;
+                        var direction = outward.sqrMagnitude > 1e-8f ? outward.normalized : normal;
+                        vertices.Add(core + direction * radius);
+                        normals.Add(direction);
+                    }
+                }
+                for (int j = 0; j < segments; j++)
+                {
+                    for (int i = 0; i < segments; i++)
+                    {
+                        int a = start + j * (segments + 1) + i;
+                        triangles.AddRange(new[] { a, a + 1, a + segments + 1, a + 1, a + segments + 2, a + segments + 1 });
+                    }
+                }
+            }
+
+            var mesh = LoadOrCreateMesh(meshPath, "Rounded Box");
+            mesh.Clear();
+            mesh.SetVertices(vertices);
+            mesh.SetNormals(normals);
+            mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateBounds();
+            EditorUtility.SetDirty(mesh);
+            return mesh;
+        }
+
+        // A width x height rectangle in the local XY plane whose border `fuzz` wide fades out (vertex alpha): a
+        // soft glow or square of light when drawn additively with the Projector Beam shader.
+        public static Mesh CreateSoftRectMesh(string meshPath, float width, float height, float fuzz)
+        {
+            float[] xs = { -width / 2f - fuzz, -width / 2f + fuzz, width / 2f - fuzz, width / 2f + fuzz };
+            float[] ys = { -height / 2f - fuzz, -height / 2f + fuzz, height / 2f - fuzz, height / 2f + fuzz };
+            var vertices = new Vector3[16];
+            var colors = new Color[16];
+            for (int y = 0; y < 4; y++)
+            {
+                for (int x = 0; x < 4; x++)
+                {
+                    vertices[y * 4 + x] = new Vector3(xs[x], ys[y], 0f);
+                    bool inner = x is 1 or 2 && y is 1 or 2;
+                    colors[y * 4 + x] = new Color(1f, 1f, 1f, inner ? 1f : 0f);
+                }
+            }
+            var triangles = new int[9 * 6];
+            for (int y = 0, t = 0; y < 3; y++)
+            {
+                for (int x = 0; x < 3; x++, t += 6)
+                {
+                    // Split each corner cell along the diagonal through its lit inner corner, so the fade has no crease.
+                    int i = y * 4 + x;
+                    bool alongMain = x == y;
+                    triangles[t] = i;
+                    triangles[t + 1] = i + 4;
+                    triangles[t + 2] = alongMain ? i + 5 : i + 1;
+                    triangles[t + 3] = alongMain ? i : i + 1;
+                    triangles[t + 4] = i + 5;
+                    triangles[t + 5] = alongMain ? i + 1 : i + 4;
+                }
+            }
+
+            var mesh = LoadOrCreateMesh(meshPath, "Soft Rect");
+            mesh.Clear();
+            mesh.vertices = vertices;
+            mesh.colors = colors;
+            mesh.triangles = triangles;
+            mesh.RecalculateBounds();
+            EditorUtility.SetDirty(mesh);
+            return mesh;
+        }
+
+        // An additive glow material on the Projector Beam shader (pair with CreateSoftRectMesh).
+        public static Material CreateGlowMaterial(string folder, string name, Color tint, float intensity)
+        {
+            EnsureFolder(folder);
+            string path = folder + "/" + name + ".mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(Shader.Find("Projector/Projector Beam"));
+                AssetDatabase.CreateAsset(material, path);
+            }
+            material.SetColor("_Tint", tint);
+            material.SetFloat("_Intensity", intensity);
+            EditorUtility.SetDirty(material);
+            return material;
+        }
+
+        // Combines `parts` (each a mesh and its world matrix) into one mesh asset at `meshPath`: one draw call.
+        public static Mesh CombineIntoMesh(string meshPath, List<CombineInstance> parts)
+        {
+            var mesh = LoadOrCreateMesh(meshPath, System.IO.Path.GetFileNameWithoutExtension(meshPath));
+            mesh.Clear();
+            mesh.indexFormat = IndexFormat.UInt32;
+            mesh.CombineMeshes(parts.ToArray(), true, true);
+            mesh.RecalculateBounds();
+            EditorUtility.SetDirty(mesh);
+            return mesh;
+        }
+
+        // A renderer for a generated mesh, without shadows.
+        public static GameObject CreateMeshObject(string name, Transform parent, Mesh mesh, Material material)
+        {
+            var go = new GameObject(name);
+            Undo.RegisterCreatedObjectUndo(go, "Create " + name);
+            go.transform.SetParent(parent, false);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var meshRenderer = go.AddComponent<MeshRenderer>();
+            meshRenderer.sharedMaterial = material;
+            meshRenderer.shadowCastingMode = ShadowCastingMode.Off;
+            meshRenderer.receiveShadows = false;
+            return go;
+        }
+
+        public static Mesh LoadOrCreateMesh(string path, string name)
+        {
+            var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+            if (mesh == null)
+            {
+                mesh = new Mesh { name = name };
+                AssetDatabase.CreateAsset(mesh, path);
+            }
+            return mesh;
         }
 
         // ---------- Assets ----------
