@@ -231,8 +231,9 @@ namespace Projector.Editor
             particleRenderer.receiveShadows = false;
         }
 
-        // On the left wall: a framed black-and-white poster, "PROJECTOR" across the top, with the runners hopping
-        // along a shadow ground from the start line to the finish flag and reappearing back at the start.
+        // On the left wall: a framed black-and-white poster, "PROJECTOR" across the top over "NOW IN THEATERS", with
+        // the runners hopping along a shadow ground from the start line to the finish flag and reappearing back at
+        // the start.
         private static void CreateFramedPoster(Transform parent, Material frame, Material gold, Material velvet)
         {
             Material paper = CreateUnlitMaterial(Folder, "PosterPaper", new Color(0.8f, 0.8f, 0.78f));
@@ -254,6 +255,11 @@ namespace Projector.Editor
             var titleText = CreateText("PROJECTOR", title.transform, 190, new Color(0.08f, 0.08f, 0.08f));
             titleText.fontStyle = FontStyle.Bold;
             SetFullSize(titleText.rectTransform);
+
+            var tagline = CreateWorldCanvas("Tagline", poster.transform, new Vector2(1400f, 120f), null);
+            Object.DestroyImmediate(tagline.GetComponent<UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster>());
+            tagline.transform.SetLocalPositionAndRotation(new Vector3(0f, 0.2f, -0.01f), Quaternion.identity);
+            SetFullSize(CreateText("NOW IN THEATERS", tagline.transform, 80, new Color(0.2f, 0.2f, 0.2f)).rectTransform);
 
             const float startX = -0.62f, finishX = 0.6f, groundY = -0.33f;
             CreateCube("Ground", poster.transform, new Vector3(0f, groundY, -0.01f), new Vector3(1.36f, 0.035f, 0.005f), ink, false);
