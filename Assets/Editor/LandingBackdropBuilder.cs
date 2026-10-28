@@ -165,13 +165,15 @@ namespace Projector.Editor
             SetAnchors(paper.rectTransform, new Vector2(0.035f, 0.045f), new Vector2(0.965f, 0.955f));
 
             var badge = CreateText(number, paper.transform, 210, TheaterRed);
+            badge.font = HeaderFont;
             SetAnchors(badge.rectTransform, new Vector2(0.04f, 0.5f), new Vector2(0.3f, 0.97f));
             var heading = CreateText(title, paper.transform, 120, PosterInk);
-            heading.fontStyle = FontStyle.Bold;
+            heading.font = HeaderFont;
             heading.alignment = TextAnchor.MiddleLeft;
             SetAnchors(heading.rectTransform, new Vector2(0.3f, 0.55f), new Vector2(0.97f, 0.92f));
 
             var text = CreateText(body, paper.transform, 62, PosterInk);
+            text.font = BodyFont;
             text.horizontalOverflow = HorizontalWrapMode.Wrap;
             text.alignment = TextAnchor.UpperCenter;
             SetAnchors(text.rectTransform, new Vector2(0.07f, 0.06f), new Vector2(0.93f, 0.5f));
@@ -253,13 +255,15 @@ namespace Projector.Editor
             Object.DestroyImmediate(title.GetComponent<UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster>());
             title.transform.SetLocalPositionAndRotation(new Vector3(0f, 0.36f, -0.01f), Quaternion.identity);
             var titleText = CreateText("PROJECTOR", title.transform, 190, new Color(0.08f, 0.08f, 0.08f));
-            titleText.fontStyle = FontStyle.Bold;
+            titleText.font = HeaderFont;
             SetFullSize(titleText.rectTransform);
 
             var tagline = CreateWorldCanvas("Tagline", poster.transform, new Vector2(1400f, 120f), null);
             Object.DestroyImmediate(tagline.GetComponent<UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster>());
             tagline.transform.SetLocalPositionAndRotation(new Vector3(0f, 0.2f, -0.01f), Quaternion.identity);
-            SetFullSize(CreateText("NOW IN THEATERS", tagline.transform, 80, new Color(0.2f, 0.2f, 0.2f)).rectTransform);
+            var taglineText = CreateText("NOW IN THEATERS", tagline.transform, 80, new Color(0.2f, 0.2f, 0.2f));
+            taglineText.font = BodyFont;
+            SetFullSize(taglineText.rectTransform);
 
             const float startX = -0.62f, finishX = 0.6f, groundY = -0.33f;
             CreateCube("Ground", poster.transform, new Vector3(0f, groundY, -0.01f), new Vector3(1.36f, 0.035f, 0.005f), ink, false);

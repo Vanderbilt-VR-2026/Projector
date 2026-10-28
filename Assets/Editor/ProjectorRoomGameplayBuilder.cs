@@ -421,7 +421,7 @@ namespace Projector.Editor
             canvas.transform.localScale = Vector3.one * 0.0012f;
             Text text = CreateText("Pull to start", canvas.transform, 130, Color.black, "Status");
             text.horizontalOverflow = HorizontalWrapMode.Wrap;
-            text.fontStyle = FontStyle.Bold;
+            text.font = BodyFont;
             SetFullSize(text.rectTransform);
             return text;
         }

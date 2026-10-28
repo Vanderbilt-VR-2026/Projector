@@ -24,6 +24,11 @@ namespace Projector.Editor
         public static readonly Color AccentColor = new Color(1f, 0.8f, 0.3f);
         public static readonly Color BackgroundColor = new Color(0.06f, 0.065f, 0.075f);
 
+        // The old-movie lettering (Google Fonts, SIL Open Font License): Art Deco Limelight for headers, Josefin Sans
+        // for the text under them. Limelight has one weight, so headers stay FontStyle.Normal.
+        public static Font HeaderFont => AssetDatabase.LoadAssetAtPath<Font>("Assets/Art/Fonts/Limelight-Regular.ttf");
+        public static Font BodyFont => AssetDatabase.LoadAssetAtPath<Font>("Assets/Art/Fonts/JosefinSans-Regular.ttf");
+
 
         // ---------- Geometry ----------
 
