@@ -257,12 +257,12 @@ namespace Projector.Editor
 
             // Bigger than real popcorn so it's easy to see and grab in VR (about 7 cm), scattered in front of the
             // counter and heaped below the machine.
-            const int pieces = 30;
+            const int pieces = 15;
             const float size = 0.07f;
             var random = new System.Random(11);
             for (int i = 0; i < pieces; i++)
             {
-                bool underMachine = i < 10;
+                bool underMachine = i < 5;
                 float x = underMachine ? 2.5f + Rand(random, -0.6f, 0.6f) : Rand(random, -3.2f, 3.2f);
                 float z = underMachine ? CounterZ - 0.5f + Rand(random, -0.25f, 0.2f) : Rand(random, 0.5f, CounterZ - 0.45f);
                 var piece = CreateMeshObject("Popcorn", root.transform, kernel, popcorn);
