@@ -22,8 +22,8 @@ namespace Projector.Gameplay
     //   Building - players hang props in the beam; the wall shows a live 2D projection of them.
     //   Racing   - pulling the rope (or the projector button) locks the shapes in as platforms and everyone
     //              races on the wall.
-    //   Results  - the scoreboard is projected; the host pulls the rope to play again (back to Building), and
-    //              everyone else pulls it to leave.
+    //   Results  - the scoreboard is projected; the host pulls the rope to play again (back to Building), or
+    //              pulls it twice in quick succession to leave, and everyone else pulls it to leave.
     // The host can also pull the rope at any point in a race to end it and go straight to results. What a pull
     // does right now is written in the square of light beside the rope.
     public class ProjectorGame : NetworkBehaviour
@@ -59,8 +59,12 @@ namespace Projector.Gameplay
 
         public readonly NetworkVariable<GamePhase> Phase = new NetworkVariable<GamePhase>();
         readonly NetworkVariable<double> buildEndTime = new NetworkVariable<double>();
+        const float SecondPullSeconds = 2.5f;
+
         float nextPreview;
         float noticeUntil;
+        // Host, in results: after one pull, play again when this time passes unless a second pull leaves first.
+        float playAgainAt = -1f;
         string notice;
 
         double Now => NetworkManager.ServerTime.Time;
@@ -150,10 +154,15 @@ namespace Projector.Gameplay
                     EndRace();
                     break;
                 case GamePhase.Results:
-                    if (IsServer)
-                        PlayAgain();
-                    else
+                    if (!IsServer)
                         Leave();
+                    else if (playAgainAt >= 0f)
+                    {
+                        playAgainAt = -1f;
+                        Leave();
+                    }
+                    else
+                        playAgainAt = Time.time + SecondPullSeconds;
                     break;
             }
         }
@@ -203,7 +212,17 @@ namespace Projector.Gameplay
                     hudText.text = IsServer ? "Pull to end race\n" + race.ClockText() : race.ClockText();
                     break;
                 case GamePhase.Results:
-                    hudText.text = IsServer ? "Pull to play again" : "Pull to leave";
+                    if (!IsServer)
+                        hudText.text = "Pull to leave";
+                    else if (playAgainAt < 0f)
+                        hudText.text = "Pull to play again\nPull twice to leave";
+                    else if (Time.time < playAgainAt)
+                        hudText.text = "Playing again...\nPull again to leave";
+                    else
+                    {
+                        playAgainAt = -1f;
+                        PlayAgain();
+                    }
                     break;
             }
         }
@@ -386,6 +405,7 @@ namespace Projector.Gameplay
             var racing = phase == GamePhase.Racing;
             var results = phase == GamePhase.Results;
 
+            playAgainAt = -1f;
             if (building)
                 platforms.ClearLevel();
             platforms.SetPreviewVisible(building);
