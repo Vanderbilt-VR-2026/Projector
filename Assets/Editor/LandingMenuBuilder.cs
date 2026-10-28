@@ -118,6 +118,7 @@ public static class LandingMenuBuilder
         SetFullSize(panel.rectTransform);
 
         var title = CreateText("PROJECTOR", panel.transform, 82, Color.white);
+        title.font = SceneBuildUtility.HeaderFont;
         SetAnchors(title.rectTransform, new Vector2(0.1f, 0.76f), new Vector2(0.9f, 0.92f));
 
         var button = CreateButton("HOST PRIVATE GAME", panel.transform);
@@ -150,6 +151,7 @@ public static class LandingMenuBuilder
         SetAnchors(lobbyCodeText.rectTransform, new Vector2(0.15f, 0.65f), new Vector2(0.85f, 0.9f));
 
         var playerListTitle = CreateText("CURRENT PLAYERS", lobbyPanel.transform, 34, Color.white);
+        playerListTitle.font = SceneBuildUtility.HeaderFont;
         SetAnchors(playerListTitle.rectTransform, new Vector2(0.2f, 0.54f), new Vector2(0.8f, 0.63f));
 
         var playerListText = CreateText("", lobbyPanel.transform, 34, Color.white);
@@ -187,6 +189,7 @@ public static class LandingMenuBuilder
         SetFullSize(joinPanel.rectTransform);
 
         var joinTitle = CreateText("JOIN GAME", joinPanel.transform, 64, Color.white);
+        joinTitle.font = SceneBuildUtility.HeaderFont;
         SetAnchors(joinTitle.rectTransform, new Vector2(0.1f, 0.86f), new Vector2(0.9f, 0.96f));
 
         var codeInput = CreateInputField(joinPanel.transform);
@@ -327,7 +330,8 @@ public static class LandingMenuBuilder
         textObject.transform.SetParent(parent, false);
         var text = textObject.AddComponent<Text>();
         text.text = value;
-        text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        // Josefin Sans, like the posters' text; headings switch to Limelight.
+        text.font = SceneBuildUtility.BodyFont;
         text.horizontalOverflow = HorizontalWrapMode.Overflow;
         text.verticalOverflow = VerticalWrapMode.Overflow;
         text.fontSize = fontSize;
