@@ -150,9 +150,9 @@ public static class LandingMenuBuilder
         var lobbyCodeText = CreateText("", lobbyPanel.transform, 64, new Color(1f, 0.8f, 0.3f));
         SetAnchors(lobbyCodeText.rectTransform, new Vector2(0.15f, 0.65f), new Vector2(0.85f, 0.9f));
 
-        var playerListTitle = CreateText("CURRENT PLAYERS", lobbyPanel.transform, 34, Color.white);
+        var playerListTitle = CreateText("CURRENT PLAYERS", lobbyPanel.transform, 52, Color.white);
         playerListTitle.font = SceneBuildUtility.HeaderFont;
-        SetAnchors(playerListTitle.rectTransform, new Vector2(0.2f, 0.54f), new Vector2(0.8f, 0.63f));
+        SetAnchors(playerListTitle.rectTransform, new Vector2(0.15f, 0.53f), new Vector2(0.85f, 0.65f));
 
         var playerListText = CreateText("", lobbyPanel.transform, 34, Color.white);
         SetAnchors(playerListText.rectTransform, new Vector2(0.2f, 0.32f), new Vector2(0.8f, 0.54f));
@@ -163,9 +163,9 @@ public static class LandingMenuBuilder
         SetAnchors(lobbyBackButton.GetComponent<RectTransform>(), new Vector2(0.06f, 0.06f), new Vector2(0.24f, 0.15f));
         UnityEventTools.AddPersistentListener(lobbyBackButton.onClick, controller.BackToLanding);
 
+        // Wider than BACK, so START GAME fits at the buttons' usual font size.
         var startGameButton = CreateButton("START GAME", lobbyPanel.transform);
-        SetAnchors(startGameButton.GetComponent<RectTransform>(), new Vector2(0.76f, 0.06f), new Vector2(0.94f, 0.15f));
-        startGameButton.GetComponentInChildren<Text>().fontSize = 22;
+        SetAnchors(startGameButton.GetComponent<RectTransform>(), new Vector2(0.64f, 0.06f), new Vector2(0.94f, 0.15f));
         UnityEventTools.AddPersistentListener(startGameButton.onClick, lobbyMenuController.StartGame);
 
         var randomGameMenu = CreateCanvas("Random Game Menu", controller.transform, camera);
