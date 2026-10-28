@@ -47,8 +47,8 @@ namespace Projector.Gameplay
         [SerializeField] Text banner;
         [SerializeField] float countdownSeconds = 3f;
         [SerializeField] float timeLimitSeconds = 90f;
-        [SerializeField] float startX = -8.5f;
-        [SerializeField] float finishX = 7.2f;
+        [SerializeField] float startX = -13.5f;
+        [SerializeField] float finishX = 12.2f;
         [SerializeField] float pitHeight = 1f;
 
         public static RaceManager Current { get; private set; }

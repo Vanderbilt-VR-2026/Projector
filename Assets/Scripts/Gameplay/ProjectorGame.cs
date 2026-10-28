@@ -20,9 +20,12 @@ namespace Projector.Gameplay
 
     // The projector room's game loop, all in one room:
     //   Building - players hang props in the beam; the wall shows a live 2D projection of them.
-    //   Racing   - PROJECT locks the shapes in as platforms and everyone races on the wall.
-    //   Results  - the scoreboard is projected; the host can PLAY AGAIN (back to Building) or anyone can LEAVE.
-    // The host can also END RACE at any point in a race to go straight to results.
+    //   Racing   - pulling the rope (or the projector button) locks the shapes in as platforms and everyone
+    //              races on the wall.
+    //   Results  - the scoreboard is projected; the host pulls the rope to play again (back to Building), and
+    //              everyone else pulls it to leave.
+    // The host can also pull the rope at any point in a race to end it and go straight to results. What a pull
+    // does right now is written in the square of light beside the rope.
     public class ProjectorGame : NetworkBehaviour
     {
         const float PreviewInterval = 0.1f;
@@ -32,11 +35,9 @@ namespace Projector.Gameplay
         [SerializeField] ProjectedPlatforms platforms;
         [SerializeField] RaceManager race;
         [SerializeField] Scoreboard scoreboard;
+        [Tooltip("The instructions in the square of light beside the rope.")]
         [SerializeField] Text hudText;
-        [SerializeField] GameObject projectButton;
-        [SerializeField] GameObject endRaceButton;
-        [SerializeField] GameObject playAgainButton;
-        [SerializeField] GameObject leaveButton;
+        [SerializeField] PullRope rope;
         [SerializeField] XRBaseInteractable projectorButton;
         [Tooltip("Where each player slot stands to watch the wall during the race.")]
         [SerializeField] Transform[] viewingSpots;
@@ -70,6 +71,8 @@ namespace Projector.Gameplay
             Phase.OnValueChanged += OnPhaseChanged;
             if (projectorButton != null)
                 projectorButton.selectEntered.AddListener(OnProjectorButton);
+            if (rope != null)
+                rope.Pulled += OnRopePulled;
             HideStaticProps();
             if (IsServer)
             {
@@ -117,6 +120,8 @@ namespace Projector.Gameplay
             ClearGeneratedItems();
             if (projectorButton != null)
                 projectorButton.selectEntered.RemoveListener(OnProjectorButton);
+            if (rope != null)
+                rope.Pulled -= OnRopePulled;
             if (Current == this)
                 Current = null;
         }
@@ -134,7 +139,26 @@ namespace Projector.Gameplay
 
         void OnProjectorButton(SelectEnterEventArgs args) => ProjectNow();
 
-        // UI buttons and the projector's poke button.
+        void OnRopePulled()
+        {
+            switch (Phase.Value)
+            {
+                case GamePhase.Building:
+                    ProjectNow();
+                    break;
+                case GamePhase.Racing:
+                    EndRace();
+                    break;
+                case GamePhase.Results:
+                    if (IsServer)
+                        PlayAgain();
+                    else
+                        Leave();
+                    break;
+            }
+        }
+
+        // The rope and the projector's poke button.
         public void ProjectNow()
         {
             if (IsSpawned)
@@ -166,7 +190,7 @@ namespace Projector.Gameplay
                     var remaining = Mathf.Max(0f, (float)(buildEndTime.Value - Now));
                     hudText.text = Time.time < noticeUntil ? notice
                         : buildEndTime.Value <= 0 ? "Waiting for players..."
-                        : $"Hang objects in the projector beam\n{(int)remaining / 60}:{(int)remaining % 60:00}";
+                        : $"Pull to start\n{(int)remaining / 60}:{(int)remaining % 60:00}";
                     if (Time.time >= nextPreview)
                     {
                         nextPreview = Time.time + PreviewInterval;
@@ -176,10 +200,10 @@ namespace Projector.Gameplay
                         Project(evenIfEmpty: true);
                     break;
                 case GamePhase.Racing:
-                    hudText.text = race.ClockText();
+                    hudText.text = IsServer ? "Pull to end race\n" + race.ClockText() : race.ClockText();
                     break;
                 case GamePhase.Results:
-                    hudText.text = IsServer ? "Results\nPLAY AGAIN to build a new level" : "Results\nWaiting for the host";
+                    hudText.text = IsServer ? "Pull to play again" : "Pull to leave";
                     break;
             }
         }
@@ -366,10 +390,6 @@ namespace Projector.Gameplay
                 platforms.ClearLevel();
             platforms.SetPreviewVisible(building);
             scoreboard.gameObject.SetActive(results);
-            projectButton.SetActive(building);
-            endRaceButton.SetActive(racing && IsServer);
-            playAgainButton.SetActive(results && IsServer);
-            leaveButton.SetActive(results);
 
             // Items are movable only during building, and the thumbstick drives the runner during the race.
             foreach (var prop in FindObjectsByType<NetworkProp>(FindObjectsSortMode.None))

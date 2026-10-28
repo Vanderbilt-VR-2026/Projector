@@ -17,7 +17,7 @@ namespace Projector.Gameplay
         [SerializeField] float depth = 1.5f;
         [SerializeField] float borderWidth = 0.12f;
         [Tooltip("Always-present platforms in level coordinates (start, finish).")]
-        [SerializeField] Rect[] fixedPlatforms = { new Rect(-10f, 1f, 3f, 1f), new Rect(7f, 1f, 3f, 1f) };
+        [SerializeField] Rect[] fixedPlatforms = { new Rect(-15f, 1f, 3f, 1f), new Rect(12f, 1f, 3f, 1f) };
         [SerializeField] Color[] fixedColors = { new Color(0.3f, 0.75f, 0.4f), new Color(0.95f, 0.72f, 0.2f) };
 
         readonly List<Shape> preview = new List<Shape>();

@@ -2,7 +2,6 @@ using Projector.Gameplay;
 using GameplayProjectorGame = Projector.Gameplay.ProjectorGame;
 using Unity.Netcode;
 using UnityEditor;
-using UnityEditor.Events;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -12,10 +11,11 @@ using static Projector.Editor.SceneBuildUtility;
 
 namespace Projector.Editor
 {
-    // Adds the whole game to the projector room without rebuilding the room itself (that needs the local food
-    // pack). The projector films an off-screen 2D "stage" with an orthographic camera and shows it on the left
-    // wall through the projection shader; props in the beam are drawn on that stage as 2D shapes, and the race
-    // runs there too. Re-running replaces the previous "Gameplay" objects.
+    // Adds the whole game to the projector room (QuestRoomSceneBuilder's theater) without rebuilding the room.
+    // The projector films an off-screen 2D "stage" with an orthographic camera and shows it on the screen on the
+    // front wall through the projection shader; props in the beam are drawn on that stage as 2D shapes, and the
+    // race runs there too. A rope hanging beside the screen starts and ends rounds, with what it does written in a
+    // square of light on the wall. Re-running replaces the previous "Gameplay" objects.
     public static class ProjectorRoomGameplayBuilder
     {
         private const string ScenePath = "Assets/Scenes/ProjectorRoom.unity";
@@ -23,6 +23,11 @@ namespace Projector.Editor
         private const string ProjectionFolder = "Assets/Generated/Projection";
         private const string RootName = "Gameplay";
         private const float TableTop = 0.865f;
+        private const float CeilingY = 13.5f;
+        // Where the old menu stood, just past the left curtain: the pull rope, and the square of light beyond it.
+        private static readonly Vector3 RopePosition = new Vector3(-3.3f, 0f, -4.9f);
+        private static readonly Vector3 LightSquareCenter = new Vector3(-3.9f, 2.2f, -6f);
+        private static readonly Color Ink = new Color(0.12f, 0.11f, 0.1f);
         // Far below the room and outside the headset camera's 50 m far plane, so only the projector camera sees it.
         private static readonly Vector3 StageOrigin = new Vector3(0f, -500f, 0f);
 
@@ -37,7 +42,6 @@ namespace Projector.Editor
             var root = new GameObject(RootName);
             ProjectionCapture capture = CreateProjector(root.transform);
             CreateScreenFrame(root.transform, capture);
-            CreateBackWall(root.transform);
 
             Transform stage = CreateStage(root.transform, out ProjectedPlatforms platforms, out Scoreboard scoreboard, out Text banner);
             RenderTexture projection = CreateProjectorCamera(stage);
@@ -62,7 +66,8 @@ namespace Projector.Editor
             return spots;
         }
 
-        // During the race everyone stands back by the projector, side by side, facing the screen.
+        // During the race everyone stands back beside the projector, side by side, facing the screen, within a
+        // controller ray's reach of the rope.
         private static Object[] CreateViewingSpots(Transform parent, ProjectionCapture capture)
         {
             var screenCenter = new Vector3(capture.WallX, capture.Screen.center.y, capture.Screen.center.x);
@@ -71,7 +76,7 @@ namespace Projector.Editor
             {
                 var spot = new GameObject($"Viewing Spot {i + 1}").transform;
                 spot.SetParent(parent);
-                spot.position = new Vector3(1.6f, 0f, -2.6f + i * 0.6f);
+                spot.position = new Vector3(5f, 0f, -3.6f + i * 0.6f);
                 var toScreen = screenCenter - spot.position;
                 toScreen.y = 0f;
                 spot.rotation = Quaternion.LookRotation(toScreen);
@@ -98,35 +103,28 @@ namespace Projector.Editor
 
             var light = beam.AddComponent<Light>();
             light.type = LightType.Spot;
-            light.spotAngle = 70f;
-            light.innerSpotAngle = 45f;
-            light.range = 6.8f;
+            light.spotAngle = 100f;
+            light.innerSpotAngle = 70f;
+            light.range = 7f;
             light.intensity = 6f;
             light.color = new Color(1f, 0.97f, 0.9f);
             light.shadows = LightShadows.None;
             return capture;
         }
 
-        // Thin frame on the left wall around the projected image.
+        // Black masking around the projected image, like a cinema screen's border.
         private static void CreateScreenFrame(Transform parent, ProjectionCapture capture)
         {
-            Material frame = CreateMaterial(GrayboxFolder, "DarkGray", new Color(0.12f, 0.13f, 0.14f), 0.3f, 0f);
+            Material frame = CreateMaterial(ProjectionFolder, "ScreenMasking", new Color(0.02f, 0.02f, 0.02f), 0.1f, 0f);
             var root = new GameObject("Screen Frame");
             root.transform.SetParent(parent);
             Rect screen = capture.Screen;
             float x = capture.WallX + 0.01f;
-            const float bar = 0.03f;
+            const float bar = 0.15f;
             CreateCube("Top", root.transform, new Vector3(x, screen.yMax, screen.center.x), new Vector3(0.02f, bar, screen.width + bar), frame, false);
             CreateCube("Bottom", root.transform, new Vector3(x, screen.yMin, screen.center.x), new Vector3(0.02f, bar, screen.width + bar), frame, false);
             CreateCube("Left", root.transform, new Vector3(x, screen.center.y, screen.xMin), new Vector3(0.02f, screen.height, bar), frame, false);
             CreateCube("Right", root.transform, new Vector3(x, screen.center.y, screen.xMax), new Vector3(0.02f, screen.height, bar), frame, false);
-        }
-
-        // The room was open behind the table; in a headset that showed the skybox from the viewing spots.
-        private static void CreateBackWall(Transform parent)
-        {
-            var sideWall = AssetDatabase.LoadAssetAtPath<Material>("Assets/Generated/QuestRoom/SideWall.mat");
-            CreateCube("Back Wall", parent, new Vector3(0f, 2.25f, -4f), new Vector3(8f, 4.5f, 0.16f), sideWall, true);
         }
 
         // Simple shapes that project into useful platforms: long ones become runways, tall ones become walls.
@@ -180,7 +178,7 @@ namespace Projector.Editor
         }
 
         // The 2D world the projector shows: level coordinates are the stage's local x/y, with the level
-        // spanning x -10..10 and y 0..10 to match the screen's 2:1 frame.
+        // spanning x -15..15 and y 0..10 to match the screen's 3:1 frame.
         private static Transform CreateStage(Transform parent, out ProjectedPlatforms platforms, out Scoreboard scoreboard, out Text banner)
         {
             var stage = new GameObject("Projection Stage").transform;
@@ -193,14 +191,15 @@ namespace Projector.Editor
             SetReference(platforms, "coinMaterial", shapes);
 
             // Written on the platforms themselves, clear of the runners' name tags.
-            CreateStageLabel(stage, "START", new Vector2(-8.5f, 1.5f), 0.0055f, null, new Color(0.05f, 0.2f, 0.08f));
-            CreateStageLabel(stage, "FINISH", new Vector2(8.5f, 1.5f), 0.0055f, null, new Color(0.3f, 0.2f, 0.02f));
+            CreateStageLabel(stage, "START", new Vector2(-13.5f, 1.5f), 0.0055f, null, new Color(0.05f, 0.2f, 0.08f));
+            CreateStageLabel(stage, "FINISH", new Vector2(13.5f, 1.5f), 0.0055f, null, new Color(0.3f, 0.2f, 0.02f));
             Material pole = CreateUnlitMaterial(ProjectionFolder, "StagePole", new Color(0.85f, 0.85f, 0.85f));
             Material flag = CreateUnlitMaterial(ProjectionFolder, "StageFlag", new Color(0.9f, 0.25f, 0.25f));
-            CreateCube("Flag Pole", stage, new Vector3(9.6f, 3.1f, 0.02f), new Vector3(0.08f, 2.2f, 0.01f), pole, false);
-            CreateCube("Flag", stage, new Vector3(9.2f, 3.95f, 0.01f), new Vector3(0.75f, 0.5f, 0.01f), flag, false);
+            CreateCube("Flag Pole", stage, new Vector3(14.6f, 3.1f, 0.02f), new Vector3(0.08f, 2.2f, 0.01f), pole, false);
+            CreateCube("Flag", stage, new Vector3(14.2f, 3.95f, 0.01f), new Vector3(0.75f, 0.5f, 0.01f), flag, false);
 
-            banner = CreateStageLabel(stage, "", new Vector2(0f, 6.5f), 0.025f, "Countdown");
+            // Dark, like everything else drawn on the off-white film.
+            banner = CreateStageLabel(stage, "", new Vector2(0f, 6.5f), 0.025f, "Countdown", Ink);
 
             // Results, drawn over the level when the race ends.
             Canvas results = CreateWorldCanvas("Results", stage, new Vector2(1200f, 700f), null);
@@ -250,11 +249,13 @@ namespace Projector.Editor
             var texture = AssetDatabase.LoadAssetAtPath<RenderTexture>(texturePath);
             if (texture == null)
             {
-                texture = new RenderTexture(1024, 512, 16, RenderTextureFormat.ARGB32) { name = "Projection" };
+                texture = new RenderTexture(1536, 512, 16, RenderTextureFormat.ARGB32) { name = "Projection" };
                 AssetDatabase.CreateAsset(texture, texturePath);
             }
             // Mips feed the screen shader's soft focus and glow.
             texture.Release();
+            texture.width = 1536;
+            texture.height = 512;
             texture.antiAliasing = 2;
             texture.useMipMap = true;
             texture.autoGenerateMips = true;
@@ -270,7 +271,8 @@ namespace Projector.Editor
             camera.nearClipPlane = 0.1f;
             camera.farClipPlane = 25f;
             camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = Color.black;
+            // Off-white film: the screen shader adds the grain and mutes the colors.
+            camera.backgroundColor = new Color(0.9f, 0.88f, 0.82f);
             camera.targetTexture = texture;
             camera.stereoTargetEye = StereoTargetEyeMask.None;
             camera.allowHDR = false;
@@ -287,6 +289,15 @@ namespace Projector.Editor
                 AssetDatabase.CreateAsset(material, ProjectionFolder + "/ProjectionScreen.mat");
             }
             material.SetTexture("_MainTex", projection);
+            // Grain from URP's own film grain textures. The film is light, so it needs little extra brightness or
+            // bloom, and it covers the screen fully.
+            material.SetTexture("_Grain", AssetDatabase.LoadAssetAtPath<Texture2D>("Packages/com.unity.render-pipelines.universal/Textures/FilmGrain/Medium02.png"));
+            material.SetFloat("_Brightness", 1.05f);
+            material.SetFloat("_Bloom", 0.12f);
+            material.SetFloat("_Wash", 0f);
+            material.SetFloat("_Ambient", 0f);
+            material.SetFloat("_Scanlines", 0.04f);
+            material.SetFloat("_GrainStrength", 0.45f);
             EditorUtility.SetDirty(material);
 
             Rect screen = capture.Screen;
@@ -316,7 +327,7 @@ namespace Projector.Editor
             SceneBuildUtility.CreateBeam("Projector Beam", parent, capture.transform.position, corners, ProjectionFolder + "/ProjectorBeam.asset");
         }
 
-        // The game loop object, its race, and the HUD above the screen (status text + buttons, facing the room).
+        // The game loop object, its race, and its controls: the pull rope and the instructions in the light.
         private static void CreateGame(Transform parent, ProjectionCapture capture, ProjectedPlatforms platforms, Scoreboard scoreboard, Text banner, Transform stage)
         {
             var root = new GameObject("Projector Game");
@@ -325,42 +336,15 @@ namespace Projector.Editor
             GameplayProjectorGame game = root.AddComponent<GameplayProjectorGame>();
             RaceManager race = root.AddComponent<RaceManager>();
 
-            // Beside the screen's left edge (no room above it under the ceiling): the side nearest the table and
-            // the viewing spots, so the buttons stay easy to hit with a controller ray. Facing into the room.
-            Rect screen = capture.Screen;
-            Canvas canvas = CreateWorldCanvas("Projector HUD", root.transform, new Vector2(1000f, 1100f), null);
-            canvas.transform.localScale = Vector3.one * 0.0012f;
-            canvas.transform.SetPositionAndRotation(new Vector3(capture.WallX + 0.04f, screen.center.y, screen.xMin - 0.12f - 0.6f), Quaternion.LookRotation(Vector3.left));
-
-            var panel = CreatePanel("Panel", canvas.transform);
-            Text hud = CreateText("", panel, 84, Color.white, "Status");
-            hud.horizontalOverflow = HorizontalWrapMode.Wrap;
-            SetAnchors(hud.rectTransform, new Vector2(0.05f, 0.4f), new Vector2(0.95f, 0.96f));
-            Button project = CreateButton("PROJECT NOW", panel, 80);
-            SetAnchors(project.GetComponent<RectTransform>(), new Vector2(0.06f, 0.05f), new Vector2(0.94f, 0.35f));
-            UnityEventTools.AddPersistentListener(project.onClick, game.ProjectNow);
-            // Same slot as PROJECT NOW; the host ignores it until the countdown is over, so a double pull on
-            // PROJECT NOW can't end the race it just started.
-            Button endRace = CreateButton("END RACE", panel, 80);
-            SetAnchors(endRace.GetComponent<RectTransform>(), new Vector2(0.06f, 0.05f), new Vector2(0.94f, 0.35f));
-            endRace.GetComponent<Image>().color = new Color(0.62f, 0.2f, 0.18f);
-            UnityEventTools.AddPersistentListener(endRace.onClick, game.EndRace);
-            Button again = CreateButton("PLAY AGAIN", panel, 64);
-            SetAnchors(again.GetComponent<RectTransform>(), new Vector2(0.04f, 0.05f), new Vector2(0.49f, 0.35f));
-            UnityEventTools.AddPersistentListener(again.onClick, game.PlayAgain);
-            Button leave = CreateButton("LEAVE", panel, 64);
-            SetAnchors(leave.GetComponent<RectTransform>(), new Vector2(0.51f, 0.05f), new Vector2(0.96f, 0.35f));
-            UnityEventTools.AddPersistentListener(leave.onClick, game.Leave);
+            PullRope rope = CreatePullRope(root.transform);
+            Text hud = CreateLightSquare(root.transform);
 
             SetReference(game, "capture", capture);
             SetReference(game, "platforms", platforms);
             SetReference(game, "race", race);
             SetReference(game, "scoreboard", scoreboard);
             SetReference(game, "hudText", hud);
-            SetReference(game, "projectButton", project.gameObject);
-            SetReference(game, "endRaceButton", endRace.gameObject);
-            SetReference(game, "playAgainButton", again.gameObject);
-            SetReference(game, "leaveButton", leave.gameObject);
+            SetReference(game, "rope", rope);
             SetReferences(game, "itemPrefabs", new Object[]
             {
                 AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Resources/NetworkPrefabs/ItemMocks/Block.prefab"),
@@ -385,6 +369,113 @@ namespace Projector.Editor
             SetReference(race, "game", game);
             SetReference(race, "banner", banner);
             EnsureEventSystem();
+        }
+
+        // A thick gold rope hanging from the ceiling with a tassel at hand height. Grabbing it anywhere (up close or
+        // with a ray) and pulling down works the game (see ProjectorGame).
+        private static PullRope CreatePullRope(Transform parent)
+        {
+            Material cord = AssetDatabase.LoadAssetAtPath<Material>("Assets/Generated/QuestRoom/DarkGold.mat");
+            Material tassel = CreateMaterial(ProjectionFolder, "Tassel", new Color(0.62f, 0.45f, 0.16f), 0.3f, 0.2f);
+
+            var root = new GameObject("Pull Rope");
+            root.transform.SetParent(parent);
+            root.transform.position = new Vector3(RopePosition.x, CeilingY, RopePosition.z);
+            var rope = new GameObject("Rope").transform;
+            rope.SetParent(root.transform, false);
+
+            const float bottom = 1.25f;
+            float length = CeilingY - bottom;
+            CreateCylinder("Cord", rope, new Vector3(0f, -length / 2f, 0f), new Vector3(0.06f, length / 2f, 0.06f), Vector3.zero, cord, true);
+            CreatePrimitive(PrimitiveType.Sphere, "Knob", rope, new Vector3(0f, -length - 0.04f, 0f), Vector3.one * 0.13f, Vector3.zero, tassel, true);
+            CreateCylinder("Tassel", rope, new Vector3(0f, -length - 0.2f, 0f), new Vector3(0.15f, 0.11f, 0.15f), Vector3.zero, tassel, true);
+            foreach (var part in rope.GetComponentsInChildren<Renderer>())
+                part.shadowCastingMode = ShadowCastingMode.Off;
+
+            root.AddComponent<XRSimpleInteractable>();
+            var pull = root.AddComponent<PullRope>();
+            SetReference(pull, "rope", rope);
+            return pull;
+        }
+
+        // A square of warm light on the wall with soft edges (a 4 x 4 vertex grid whose outer ring is transparent,
+        // drawn additively with the beam shader), with the rope's instructions on it in black.
+        private static Text CreateLightSquare(Transform parent)
+        {
+            const string materialPath = ProjectionFolder + "/LightSquare.mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
+            if (material == null)
+            {
+                material = new Material(Shader.Find("Projector/Projector Beam"));
+                AssetDatabase.CreateAsset(material, materialPath);
+            }
+            material.SetColor("_Tint", new Color(1f, 0.92f, 0.76f));
+            material.SetFloat("_Intensity", 0.75f);
+            EditorUtility.SetDirty(material);
+
+            const float size = 1.3f, fuzz = 0.2f;
+            float[] edges = { -size / 2f - fuzz, -size / 2f + fuzz, size / 2f - fuzz, size / 2f + fuzz };
+            var vertices = new Vector3[16];
+            var colors = new Color[16];
+            for (int y = 0; y < 4; y++)
+            {
+                for (int x = 0; x < 4; x++)
+                {
+                    vertices[y * 4 + x] = new Vector3(edges[x], edges[y], 0f);
+                    bool inner = x is 1 or 2 && y is 1 or 2;
+                    colors[y * 4 + x] = new Color(1f, 1f, 1f, inner ? 1f : 0f);
+                }
+            }
+            var triangles = new int[9 * 6];
+            for (int y = 0, t = 0; y < 3; y++)
+            {
+                for (int x = 0; x < 3; x++, t += 6)
+                {
+                    // Split each corner cell along the diagonal through its lit inner corner, so the fade has no crease.
+                    int i = y * 4 + x;
+                    bool alongMain = x == y;
+                    triangles[t] = i;
+                    triangles[t + 1] = i + 4;
+                    triangles[t + 2] = alongMain ? i + 5 : i + 1;
+                    triangles[t + 3] = alongMain ? i : i + 1;
+                    triangles[t + 4] = i + 5;
+                    triangles[t + 5] = alongMain ? i + 1 : i + 4;
+                }
+            }
+            const string meshPath = ProjectionFolder + "/LightSquare.asset";
+            var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(meshPath);
+            if (mesh == null)
+            {
+                mesh = new Mesh { name = "Light Square" };
+                AssetDatabase.CreateAsset(mesh, meshPath);
+            }
+            mesh.Clear();
+            mesh.vertices = vertices;
+            mesh.colors = colors;
+            mesh.triangles = triangles;
+            mesh.RecalculateBounds();
+            EditorUtility.SetDirty(mesh);
+
+            // Facing into the room (local -z toward the viewer).
+            var square = new GameObject("Light Square");
+            square.transform.SetParent(parent);
+            square.transform.SetPositionAndRotation(LightSquareCenter, Quaternion.LookRotation(Vector3.left));
+            square.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var squareRenderer = square.AddComponent<MeshRenderer>();
+            squareRenderer.sharedMaterial = material;
+            squareRenderer.shadowCastingMode = ShadowCastingMode.Off;
+            squareRenderer.receiveShadows = false;
+
+            Canvas canvas = CreateWorldCanvas("Instructions", square.transform, new Vector2(1000f, 1000f), null);
+            Object.DestroyImmediate(canvas.GetComponent<UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster>());
+            canvas.transform.localPosition = new Vector3(0f, 0f, -0.01f);
+            canvas.transform.localRotation = Quaternion.identity;
+            canvas.transform.localScale = Vector3.one * 0.0012f;
+            Text text = CreateText("Pull to start", canvas.transform, 130, Color.black, "Status");
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+            text.fontStyle = FontStyle.Bold;
+            SetFullSize(text.rectTransform);
+            return text;
         }
     }
 }

@@ -14,9 +14,9 @@ namespace Projector.Gameplay
         [Tooltip("x of the projection wall's inner face.")]
         [SerializeField] float wallX = -3.92f;
         [Tooltip("Screen rectangle on the wall: x = z range, y = height range. Maps onto levelMin..levelMax.")]
-        [SerializeField] Rect screen = new Rect(-2.3f, 1.1f, 6f, 3f);
-        [SerializeField] Vector2 levelMin = new Vector2(-10f, 0f);
-        [SerializeField] Vector2 levelMax = new Vector2(10f, 10f);
+        [SerializeField] Rect screen = new Rect(-2.3f, 1.1f, 18f, 6f);
+        [SerializeField] Vector2 levelMin = new Vector2(-15f, 0f);
+        [SerializeField] Vector2 levelMax = new Vector2(15f, 10f);
         [Tooltip("Shapes smaller than this (level units squared) are dropped as noise.")]
         [SerializeField] float minimumArea = 0.05f;
 
