@@ -190,6 +190,78 @@ namespace Projector.Editor
             return material;
         }
 
+        // The theater's wood (landing floor and counter, projector room stage): the plank texture, tinted and repeated
+        // `tiling` times across each face. Lit, but with no normal or detail maps, to stay cheap on Quest.
+        public static Material CreateWoodMaterial(string folder, string name, Vector2 tiling, Color tint, float smoothness = 0.25f)
+        {
+            Material material = CreateMaterial(folder, name, tint, smoothness, 0f);
+            Texture2D planks = CreatePlankTexture();
+            material.SetTexture("_BaseMap", planks);
+            material.SetTexture("_MainTex", planks);
+            material.SetTextureScale("_BaseMap", tiling);
+            material.SetTextureScale("_MainTex", tiling);
+            EditorUtility.SetDirty(material);
+            return material;
+        }
+
+        // Four vertical planks with grain and staggered end joints, 128 x 512 so a tile is 0.6 m wide by 2.4 m long.
+        // None of the installed packages ship a wood texture, so it's generated once (an existing file is kept).
+        public static Texture2D CreatePlankTexture()
+        {
+            const string path = "Assets/Generated/Theater/StageWood.png";
+            var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (existing != null)
+                return existing;
+
+            const int width = 128, height = 512, planks = 4, plankWidth = width / planks;
+            var random = new System.Random(7);
+            var tone = new float[planks];
+            var joint = new int[planks];
+            for (int p = 0; p < planks; p++)
+            {
+                tone[p] = 0.85f + (float)random.NextDouble() * 0.3f;
+                joint[p] = random.Next(height);
+            }
+
+            // Grain runs along the plank (y); blending with the sample one tile down makes it wrap seamlessly.
+            float Grain(int x, float y) => 0.65f * Mathf.PerlinNoise(x * 0.35f, y * 0.012f) + 0.35f * Mathf.PerlinNoise(x * 0.06f + 40f, y * 0.003f);
+
+            var light = new Color(0.56f, 0.36f, 0.2f);
+            var dark = new Color(0.34f, 0.2f, 0.1f);
+            var pixels = new Color32[width * height];
+            for (int y = 0; y < height; y++)
+            {
+                float blend = y / (float)height;
+                for (int x = 0; x < width; x++)
+                {
+                    int p = x / plankWidth;
+                    int u = x % plankWidth;
+                    float grain = Mathf.Lerp(Grain(x + p * 17, y), Grain(x + p * 17, y - height), blend);
+                    Color color = Color.Lerp(dark, light, grain) * tone[p];
+                    int fromJoint = Mathf.Abs(y - joint[p]);
+                    if (u == 0 || u == plankWidth - 1 || Mathf.Min(fromJoint, height - fromJoint) < 2)
+                        color *= 0.45f;
+                    color.a = 1f;
+                    pixels[y * width + x] = color;
+                }
+            }
+
+            EnsureFolder("Assets/Generated/Theater");
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            texture.SetPixels32(pixels);
+            texture.Apply();
+            System.IO.File.WriteAllBytes(path, texture.EncodeToPNG());
+            Object.DestroyImmediate(texture);
+
+            AssetDatabase.ImportAsset(path);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(path);
+            importer.wrapMode = TextureWrapMode.Repeat;
+            importer.mipmapEnabled = true;
+            importer.maxTextureSize = 512;
+            importer.SaveAndReimport();
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        }
+
         public static void EnsureFolder(string path)
         {
             if (AssetDatabase.IsValidFolder(path))
@@ -454,6 +526,13 @@ namespace Projector.Editor
         {
             var serialized = new SerializedObject(target);
             serialized.FindProperty(propertyName).boolValue = value;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        public static void SetFloat(Object target, string propertyName, float value)
+        {
+            var serialized = new SerializedObject(target);
+            serialized.FindProperty(propertyName).floatValue = value;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
     }

@@ -213,7 +213,7 @@ public static class LandingMenuBuilder
         EditorSceneManager.MarkSceneDirty(landingMenu.scene);
     }
 
-    // The menus stand at the backdrop's step 4 instead of following the head (LandingMenu re-applies this at runtime).
+    // The menus stand at the backdrop's counter instead of following the head (LandingMenu re-applies this at runtime).
     static void PlaceMenusAtPlaySpot(LandingMenu controller, params Transform[] menus)
     {
         var playSpot = GameObject.Find(LandingBackdropBuilder.PlaySpotName);

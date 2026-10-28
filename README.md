@@ -20,7 +20,7 @@ Multiplayer uses Netcode for GameObjects with Unity Multiplayer Services (Lobby 
 
 | Scene | What it is |
 | --- | --- |
-| `LandingMenu` | First load, in a dark projector theater that shows what a round looks like (props on a table, their shadows as a level on the screen, and the build / project / race steps). **Host private game** (join by code), **host public game** (also findable by **join random game**), **join game with code** (keypad). Then the game-found screen: live code and players; only the host gets **START GAME**. |
+| `LandingMenu` | First load, at an old movie theater's concessions stand: posters over the counter for the build / project / race / play steps, a popcorn machine, and a framed poster of runners racing to the finish. The menus stand at the counter. **Host private game** (join by code), **host public game** (also findable by **join random game**), **join game with code** (keypad). Then the game-found screen: live code and players; only the host gets **START GAME**. |
 | `ProjectorRoom` | The game itself, all in one room (below). |
 
 In the projector room:
