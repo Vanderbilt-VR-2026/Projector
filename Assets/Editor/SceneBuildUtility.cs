@@ -20,7 +20,8 @@ namespace Projector.Editor
         public const string XrRigPath = "Assets/Samples/XR Interaction Toolkit/3.3.0/Hands Interaction Demo/Prefabs/XR Origin Hands (XR Rig).prefab";
 
         public static readonly Color PanelColor = new Color(0.035f, 0.055f, 0.09f, 0.96f);
-        public static readonly Color ButtonColor = new Color(0.1f, 0.45f, 0.62f, 1f);
+        // Mahogany red, to sit with the theater's wood and velvet.
+        public static readonly Color ButtonColor = new Color(0.42f, 0.11f, 0.08f, 1f);
         public static readonly Color AccentColor = new Color(1f, 0.8f, 0.3f);
         public static readonly Color BackgroundColor = new Color(0.06f, 0.065f, 0.075f);
 

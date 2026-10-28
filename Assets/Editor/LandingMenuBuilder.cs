@@ -349,7 +349,7 @@ public static class LandingMenuBuilder
         var image = buttonObject.AddComponent<Image>();
         image.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
         image.type = Image.Type.Sliced;
-        image.color = new Color(0.1f, 0.45f, 0.62f, 1f);
+        image.color = SceneBuildUtility.ButtonColor;
         var button = buttonObject.AddComponent<Button>();
         button.targetGraphic = image;
 
