@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using static Projector.Editor.SceneBuildUtility;
 
 namespace Projector.Editor
@@ -56,7 +57,10 @@ namespace Projector.Editor
 
             CreateCounter(root.transform, wood, counterTop);
             CreateBoothHeader(root.transform, red, gold);
-            CreatePopcornMachine(root.transform, wood, trim, gold);
+            Material popcorn = CreateMaterial(Folder, "Popcorn", new Color(0.98f, 0.9f, 0.66f), 0.1f, 0f);
+            popcorn.enableInstancing = true;
+            CreatePopcornMachine(root.transform, wood, trim, gold, popcorn);
+            CreateFloorPopcorn(root.transform, popcorn);
             CreateFramedPoster(root.transform, counterTop, gold, red);
             CreatePlaySpot(root.transform);
             return root;
@@ -181,10 +185,9 @@ namespace Projector.Editor
 
         // Behind the counter on the right, on a wooden shelf: a red popcorn cart with an open gold-framed case, a
         // kettle hanging from the roof, a pile of popcorn, and a few kernels popping out of the kettle at a time.
-        private static void CreatePopcornMachine(Transform parent, Material wood, Material metal, Material gold)
+        private static void CreatePopcornMachine(Transform parent, Material wood, Material metal, Material gold, Material popcorn)
         {
             Material red = CreateMaterial(Folder, "PopcornRed", new Color(0.6f, 0.08f, 0.07f), 0.45f, 0f);
-            Material popcorn = CreateMaterial(Folder, "Popcorn", new Color(0.98f, 0.9f, 0.66f), 0.1f, 0f);
             Material kernel = CreateUnlitMaterial(Folder, "PopcornKernel", new Color(1f, 0.95f, 0.8f));
 
             const float shelfHeight = 0.95f;
@@ -232,6 +235,56 @@ namespace Projector.Editor
             particleRenderer.shadowCastingMode = ShadowCastingMode.Off;
             particleRenderer.receiveShadows = false;
         }
+
+        // Spilled popcorn on the floor between the player and the counter, heaviest below the machine, that players
+        // can pick up and throw around. Local physics only (the landing room isn't networked): each piece is a lumpy
+        // low-poly kernel with a sphere collider, a light rigidbody and a grab interactable that throws on release.
+        private static void CreateFloorPopcorn(Transform parent, Material popcorn)
+        {
+            Mesh ball = CreateRoundedBoxMesh(Folder + "/Bulb.asset", 2, 0.5f);
+            var lumps = new List<CombineInstance>
+            {
+                new CombineInstance { mesh = ball, transform = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, Vector3.one * 0.6f) },
+                new CombineInstance { mesh = ball, transform = Matrix4x4.TRS(new Vector3(0.25f, 0.12f, 0.05f), Quaternion.identity, Vector3.one * 0.5f) },
+                new CombineInstance { mesh = ball, transform = Matrix4x4.TRS(new Vector3(-0.2f, 0.15f, 0.12f), Quaternion.identity, Vector3.one * 0.45f) },
+                new CombineInstance { mesh = ball, transform = Matrix4x4.TRS(new Vector3(0.05f, -0.1f, -0.25f), Quaternion.identity, Vector3.one * 0.45f) }
+            };
+            Mesh kernel = CombineIntoMesh(Folder + "/PopcornPiece.asset", lumps);
+
+            var root = new GameObject("Floor Popcorn");
+            Undo.RegisterCreatedObjectUndo(root, "Create Floor Popcorn");
+            root.transform.SetParent(parent);
+
+            // Bigger than real popcorn so it's easy to see and grab in VR (about 7 cm), scattered in front of the
+            // counter and heaped below the machine.
+            const int pieces = 30;
+            const float size = 0.07f;
+            var random = new System.Random(11);
+            for (int i = 0; i < pieces; i++)
+            {
+                bool underMachine = i < 10;
+                float x = underMachine ? 2.5f + Rand(random, -0.6f, 0.6f) : Rand(random, -3.2f, 3.2f);
+                float z = underMachine ? CounterZ - 0.5f + Rand(random, -0.25f, 0.2f) : Rand(random, 0.5f, CounterZ - 0.45f);
+                var piece = CreateMeshObject("Popcorn", root.transform, kernel, popcorn);
+                piece.transform.SetPositionAndRotation(new Vector3(x, size * 0.5f, z), Quaternion.Euler(Rand(random, 0f, 360f), Rand(random, 0f, 360f), Rand(random, 0f, 360f)));
+                piece.transform.localScale = Vector3.one * size;
+
+                piece.AddComponent<SphereCollider>().radius = 0.5f;
+                var body = piece.AddComponent<Rigidbody>();
+                body.mass = 0.02f;
+                body.linearDamping = 0.3f;
+                body.angularDamping = 0.5f;
+                body.interpolation = RigidbodyInterpolation.Interpolate;
+                body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+
+                var grab = piece.AddComponent<XRGrabInteractable>();
+                grab.useDynamicAttach = true;
+                grab.movementType = XRBaseInteractable.MovementType.VelocityTracking;
+                grab.throwOnDetach = true;
+            }
+        }
+
+        private static float Rand(System.Random random, float min, float max) => min + (float)random.NextDouble() * (max - min);
 
         // On the left wall: a framed black-and-white poster, "PROJECTOR" across the top over "NOW IN THEATERS", with
         // the runners hopping along a shadow ground from the start line to the finish flag and reappearing back at
