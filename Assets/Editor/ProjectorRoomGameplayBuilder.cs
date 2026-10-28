@@ -191,8 +191,9 @@ namespace Projector.Editor
             SetReference(platforms, "coinMaterial", shapes);
 
             // Written on the platforms themselves, clear of the runners' name tags.
-            CreateStageLabel(stage, "START", new Vector2(-13.5f, 1.5f), 0.0055f, null, new Color(0.05f, 0.2f, 0.08f));
-            CreateStageLabel(stage, "FINISH", new Vector2(13.5f, 1.5f), 0.0055f, null, new Color(0.3f, 0.2f, 0.02f));
+            // In the theater's Limelight lettering, like the posters.
+            CreateStageLabel(stage, "START", new Vector2(-13.5f, 1.5f), 0.0055f, null, new Color(0.05f, 0.2f, 0.08f)).font = HeaderFont;
+            CreateStageLabel(stage, "FINISH", new Vector2(13.5f, 1.5f), 0.0055f, null, new Color(0.3f, 0.2f, 0.02f)).font = HeaderFont;
             Material pole = CreateUnlitMaterial(ProjectionFolder, "StagePole", new Color(0.85f, 0.85f, 0.85f));
             Material flag = CreateUnlitMaterial(ProjectionFolder, "StageFlag", new Color(0.9f, 0.25f, 0.25f));
             CreateCube("Flag Pole", stage, new Vector3(14.6f, 3.1f, 0.02f), new Vector3(0.08f, 2.2f, 0.01f), pole, false);
