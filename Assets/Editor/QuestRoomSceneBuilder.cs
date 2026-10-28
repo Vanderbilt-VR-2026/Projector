@@ -149,7 +149,7 @@ namespace Projector.Editor
         // seats are one mesh and all the risers another, so the whole audience is two draw calls.
         private static void CreateSeats(Material velvet, Material carpet)
         {
-            const int rows = 16, columns = 40;
+            const int rows = 8, columns = 40;
             const float firstRowX = StageFrontX + 2.5f, rowSpacing = 1.2f, seatSpacing = 0.72f;
             float centerZ = (ScreenMinZ + ScreenMaxZ) / 2f;
             float rowWidth = columns * seatSpacing + 0.6f;
@@ -196,7 +196,7 @@ namespace Projector.Editor
         // toward the back, fading into black on top of the fog.
         private static void ShadeVelvet(Mesh mesh, float frontX, float backX)
         {
-            var velvet = new Color(0.34f, 0.014f, 0.025f);
+            var velvet = new Color(0.22f, 0.009f, 0.016f);
             var toLight = new Vector3(-1f, 0.9f, 0.25f).normalized;
             var normals = mesh.normals;
             var vertices = mesh.vertices;
