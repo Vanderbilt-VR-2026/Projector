@@ -1,7 +1,8 @@
 // The projector's image on the wall: the wall inside the frame is dimmed (as if the room lights were low
 // there) and the image is added on top as light, with the
-// imperfections of a real projector: a bright hotspot falling off to the edges, soft focus and bloom,
-// color fringing toward the edges, faint scanlines, flicker and drifting dust.
+// imperfections of an old film projector: muted, slightly sepia colors, film grain that changes every frame,
+// a bright hotspot falling off to the edges, soft focus and bloom, color fringing toward the edges, faint
+// scanlines, flicker and drifting dust.
 Shader "Projector/Projection Screen"
 {
     Properties
@@ -17,6 +18,11 @@ Shader "Projector/Projection Screen"
         _Dust ("Dust", Range(0, 1)) = 0.35
         _Wash ("Black Level", Range(0, 0.2)) = 0.03
         _Ambient ("Wall Kept", Range(0, 1)) = 0.22
+        _Grain ("Film Grain", 2D) = "gray" {}
+        _GrainStrength ("Grain Strength", Range(0, 1)) = 0.3
+        _GrainScale ("Grain Scale", Float) = 4
+        _Saturation ("Saturation", Range(0, 1)) = 0.5
+        _Sepia ("Film Tint", Color) = (1, 0.95, 0.86, 1)
     }
 
     SubShader
@@ -53,6 +59,8 @@ Shader "Projector/Projection Screen"
 
             TEXTURE2D(_MainTex);
             SAMPLER(sampler_MainTex);
+            TEXTURE2D(_Grain);
+            SAMPLER(sampler_Grain);
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _MainTex_ST;
@@ -66,6 +74,10 @@ Shader "Projector/Projection Screen"
                 float _Dust;
                 float _Wash;
                 float _Ambient;
+                float _GrainStrength;
+                float _GrainScale;
+                float _Saturation;
+                float4 _Sepia;
             CBUFFER_END
 
             Varyings Vert(Attributes input)
@@ -108,6 +120,14 @@ Shader "Projector/Projection Screen"
 
                 // A projector never quite reaches black.
                 color += _Wash;
+
+                // Old film stock: muted colors with a warm tint, and grain that jumps to a new spot every frame.
+                float luma = dot(color, float3(0.299, 0.587, 0.114));
+                color = lerp(luma.xxx, color, _Saturation) * _Sepia.rgb;
+                float frame = floor(_Time.y * 24);
+                float2 grainUV = uv * float2(3, 1) * _GrainScale + float2(Hash(float2(frame, 1)), Hash(float2(frame, 7)));
+                float grain = SAMPLE_TEXTURE2D(_Grain, sampler_Grain, grainUV).r - 0.5;
+                color *= 1 + grain * 2 * _GrainStrength;
 
                 // Brightest where the lens points, dimmer toward the corners.
                 float2 falloff = centered * float2(1.3, 1.9);

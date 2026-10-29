@@ -4,11 +4,12 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using Unity.XR.CoreUtils;
 using UnityEngine.XR.Interaction.Toolkit.UI;
+using Projector.Editor;
 
 public static class LandingMenuBuilder
 {
-    const string XROriginPrefabPath = "Assets/Samples/XR Interaction Toolkit/3.3.0/Starter Assets/Prefabs/XR Origin (XR Rig).prefab";
     const string LandingMenuScenePath = "Assets/Scenes/LandingMenu.unity";
 
     [MenuItem("Projector/Create Landing Menu Scene")]
@@ -21,16 +22,7 @@ public static class LandingMenuBuilder
         }
 
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-        var xrOriginPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(XROriginPrefabPath);
-        if (xrOriginPrefab == null)
-        {
-            Debug.LogError($"Could not find XR Origin prefab at {XROriginPrefabPath}.");
-            return;
-        }
-
-        PrefabUtility.InstantiatePrefab(xrOriginPrefab, scene);
-            CreateDirectionalLight();
-        CreateFloor();
+        BuildEnvironment();
         CreateLandingMenuObjects();
         EditorSceneManager.SaveScene(scene, LandingMenuScenePath);
         AssetDatabase.Refresh();
@@ -76,8 +68,26 @@ public static class LandingMenuBuilder
     public static void RebuildLandingMenuScene()
     {
         var scene = EditorSceneManager.OpenScene(LandingMenuScenePath, OpenSceneMode.Single);
+        BuildEnvironment();
         RebuildLandingMenuObjects();
         EditorSceneManager.SaveScene(scene, LandingMenuScenePath);
+    }
+
+    // The same hands-and-controllers rig as the projector room (so players can poke the menus with their hands),
+    // standing in the theater backdrop. Replaces any previous rig, floor and light.
+    static void BuildEnvironment()
+    {
+        foreach (var origin in Object.FindObjectsByType<XROrigin>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            Undo.DestroyObjectImmediate(origin.gameObject);
+        foreach (var name in new[] { "XR Floor", "Directional Light" })
+        {
+            var leftover = GameObject.Find(name);
+            if (leftover != null)
+                Undo.DestroyObjectImmediate(leftover);
+        }
+
+        SceneBuildUtility.CreateXrRig("XR Origin - Quest 3 Hands and Controllers", Vector3.zero, Quaternion.identity, SceneBuildUtility.BackgroundColor);
+        LandingBackdropBuilder.Build();
     }
 
     [MenuItem("Projector/Create Landing Menu Objects")]
@@ -108,6 +118,7 @@ public static class LandingMenuBuilder
         SetFullSize(panel.rectTransform);
 
         var title = CreateText("PROJECTOR", panel.transform, 82, Color.white);
+        title.font = SceneBuildUtility.HeaderFont;
         SetAnchors(title.rectTransform, new Vector2(0.1f, 0.76f), new Vector2(0.9f, 0.92f));
 
         var button = CreateButton("HOST PRIVATE GAME", panel.transform);
@@ -139,8 +150,9 @@ public static class LandingMenuBuilder
         var lobbyCodeText = CreateText("", lobbyPanel.transform, 64, new Color(1f, 0.8f, 0.3f));
         SetAnchors(lobbyCodeText.rectTransform, new Vector2(0.15f, 0.65f), new Vector2(0.85f, 0.9f));
 
-        var playerListTitle = CreateText("CURRENT PLAYERS", lobbyPanel.transform, 34, Color.white);
-        SetAnchors(playerListTitle.rectTransform, new Vector2(0.2f, 0.54f), new Vector2(0.8f, 0.63f));
+        var playerListTitle = CreateText("CURRENT PLAYERS", lobbyPanel.transform, 52, Color.white);
+        playerListTitle.font = SceneBuildUtility.HeaderFont;
+        SetAnchors(playerListTitle.rectTransform, new Vector2(0.15f, 0.53f), new Vector2(0.85f, 0.65f));
 
         var playerListText = CreateText("", lobbyPanel.transform, 34, Color.white);
         SetAnchors(playerListText.rectTransform, new Vector2(0.2f, 0.32f), new Vector2(0.8f, 0.54f));
@@ -151,9 +163,9 @@ public static class LandingMenuBuilder
         SetAnchors(lobbyBackButton.GetComponent<RectTransform>(), new Vector2(0.06f, 0.06f), new Vector2(0.24f, 0.15f));
         UnityEventTools.AddPersistentListener(lobbyBackButton.onClick, controller.BackToLanding);
 
+        // Wider than BACK, so START GAME fits at the buttons' usual font size.
         var startGameButton = CreateButton("START GAME", lobbyPanel.transform);
-        SetAnchors(startGameButton.GetComponent<RectTransform>(), new Vector2(0.76f, 0.06f), new Vector2(0.94f, 0.15f));
-        startGameButton.GetComponentInChildren<Text>().fontSize = 22;
+        SetAnchors(startGameButton.GetComponent<RectTransform>(), new Vector2(0.64f, 0.06f), new Vector2(0.94f, 0.15f));
         UnityEventTools.AddPersistentListener(startGameButton.onClick, lobbyMenuController.StartGame);
 
         var randomGameMenu = CreateCanvas("Random Game Menu", controller.transform, camera);
@@ -169,35 +181,56 @@ public static class LandingMenuBuilder
         SetAnchors(randomBackButton.GetComponent<RectTransform>(), new Vector2(0.06f, 0.06f), new Vector2(0.24f, 0.15f));
         UnityEventTools.AddPersistentListener(randomBackButton.onClick, controller.BackToLanding);
 
+        // Taller than the other pages so the keyboard's keys can be square.
         var joinMenu = CreateCanvas("Join Game Menu", controller.transform, camera);
+        joinMenu.GetComponent<RectTransform>().sizeDelta = new Vector2(1200f, 1000f);
         joinMenu.gameObject.SetActive(false);
         var joinPanel = CreateImage("Panel", joinMenu.transform, new Color(0.035f, 0.055f, 0.09f, 0.96f));
         SetFullSize(joinPanel.rectTransform);
 
         var joinTitle = CreateText("JOIN GAME", joinPanel.transform, 64, Color.white);
-        SetAnchors(joinTitle.rectTransform, new Vector2(0.1f, 0.78f), new Vector2(0.9f, 0.92f));
+        joinTitle.font = SceneBuildUtility.HeaderFont;
+        SetAnchors(joinTitle.rectTransform, new Vector2(0.1f, 0.86f), new Vector2(0.9f, 0.96f));
 
         var codeInput = CreateInputField(joinPanel.transform);
-        SetAnchors(codeInput.GetComponent<RectTransform>(), new Vector2(0.15f, 0.68f), new Vector2(0.85f, 0.77f));
+        SetAnchors(codeInput.GetComponent<RectTransform>(), new Vector2(0.15f, 0.75f), new Vector2(0.85f, 0.83f));
 
         var joinMenuController = joinMenu.AddComponent<JoinMenu>();
         CreateVirtualKeyboard(joinPanel.transform, joinMenuController);
 
         var submitButton = CreateButton("JOIN", joinPanel.transform);
-        SetAnchors(submitButton.GetComponent<RectTransform>(), new Vector2(0.28f, 0.18f), new Vector2(0.72f, 0.27f));
+        SetAnchors(submitButton.GetComponent<RectTransform>(), new Vector2(0.3f, 0.1f), new Vector2(0.95f, 0.21f));
 
         UnityEventTools.AddPersistentListener(submitButton.onClick, joinMenuController.SubmitJoinCode);
 
         var joinBackButton = CreateButton("BACK", joinPanel.transform);
-        SetAnchors(joinBackButton.GetComponent<RectTransform>(), new Vector2(0.06f, 0.06f), new Vector2(0.24f, 0.15f));
+        SetAnchors(joinBackButton.GetComponent<RectTransform>(), new Vector2(0.05f, 0.1f), new Vector2(0.26f, 0.21f));
         UnityEventTools.AddPersistentListener(joinBackButton.onClick, controller.BackToLanding);
 
         SetPrivateReferences(controller, camera, landingMenu.transform, joinMenu.transform, lobbyMenu.transform, randomGameMenu.transform, lobbyMenuController, lobbyCodeText, playerListText, joinMenuController, codeInput, randomGameMenuController);
         SetReference(controller, "statusText", statusText);
         SetReference(lobbyMenuController, "startButton", startGameButton);
+        PlaceMenusAtPlaySpot(controller, landingMenu.transform, joinMenu.transform, lobbyMenu.transform, randomGameMenu.transform);
         EnsureEventSystem();
         Selection.activeGameObject = landingMenu;
         EditorSceneManager.MarkSceneDirty(landingMenu.scene);
+    }
+
+    // The menus stand at the backdrop's counter instead of following the head (LandingMenu re-applies this at runtime).
+    static void PlaceMenusAtPlaySpot(LandingMenu controller, params Transform[] menus)
+    {
+        var playSpot = GameObject.Find(LandingBackdropBuilder.PlaySpotName);
+        SetReference(controller, "menuAnchor", playSpot != null ? playSpot.transform : null);
+        if (playSpot == null)
+            return;
+
+        // Through the RectTransform: a plain Transform position on a canvas root doesn't survive the scene save.
+        foreach (var menu in menus)
+        {
+            var rect = (RectTransform)menu;
+            rect.anchoredPosition3D = rect.parent.InverseTransformPoint(playSpot.transform.position);
+            rect.rotation = playSpot.transform.rotation;
+        }
     }
 
     static GameObject CreateCanvas(string objectName, Transform parent, Camera camera)
@@ -297,7 +330,8 @@ public static class LandingMenuBuilder
         textObject.transform.SetParent(parent, false);
         var text = textObject.AddComponent<Text>();
         text.text = value;
-        text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        // Josefin Sans, like the posters' text; headings switch to Limelight.
+        text.font = SceneBuildUtility.BodyFont;
         text.horizontalOverflow = HorizontalWrapMode.Overflow;
         text.verticalOverflow = VerticalWrapMode.Overflow;
         text.fontSize = fontSize;
@@ -315,7 +349,7 @@ public static class LandingMenuBuilder
         var image = buttonObject.AddComponent<Image>();
         image.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
         image.type = Image.Type.Sliced;
-        image.color = new Color(0.1f, 0.45f, 0.62f, 1f);
+        image.color = SceneBuildUtility.ButtonColor;
         var button = buttonObject.AddComponent<Button>();
         button.targetGraphic = image;
 
@@ -342,34 +376,44 @@ public static class LandingMenuBuilder
         return inputField;
     }
 
+    // Square keys on a 1200 x 1000 page: 10 columns of 108 px, digits on top like a real keyboard, DEL filling
+    // the rest of the last row. A small gap between keys makes each one easier to land on.
     static void CreateVirtualKeyboard(Transform parent, JoinMenu joinMenu)
     {
-        const string keyValues = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        const int columns = 6;
-        const float left = 0.08f;
-        const float right = 0.92f;
-        const float bottom = 0.29f;
-        const float top = 0.65f;
-        var keyWidth = (right - left) / columns;
-        var keyHeight = (top - bottom) / 6f;
+        const string keyValues = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const int columns = 10;
+        const float left = 0.05f;
+        const float top = 0.71f;
+        const float keyWidth = 0.09f;
+        const float keyHeight = 0.108f;
+        const float gap = 6f;
 
         for (var index = 0; index < keyValues.Length; index++)
         {
             var keyButton = CreateButton(keyValues[index].ToString(), parent);
+            keyButton.GetComponentInChildren<Text>().fontSize = 48;
             var row = index / columns;
             var column = index % columns;
-            var min = new Vector2(left + column * keyWidth, top - (row + 1) * keyHeight);
-            var max = new Vector2(left + (column + 1) * keyWidth, top - row * keyHeight);
-            SetAnchors(keyButton.GetComponent<RectTransform>(), min, max);
+            PlaceKey(keyButton, left + column * keyWidth, top - row * keyHeight, 1, keyWidth, keyHeight, gap);
 
             var key = keyButton.gameObject.AddComponent<KeyboardKey>();
             SetKeyboardKeyReference(key, joinMenu, keyValues[index].ToString());
             UnityEventTools.AddPersistentListener(keyButton.onClick, key.Press);
         }
 
+        var lastColumn = keyValues.Length % columns;
+        var lastRow = keyValues.Length / columns;
         var deleteButton = CreateButton("DEL", parent);
-        SetAnchors(deleteButton.GetComponent<RectTransform>(), new Vector2(0.08f, 0.18f), new Vector2(0.24f, 0.27f));
+        PlaceKey(deleteButton, left + lastColumn * keyWidth, top - lastRow * keyHeight, columns - lastColumn, keyWidth, keyHeight, gap);
         UnityEventTools.AddPersistentListener(deleteButton.onClick, joinMenu.RemoveCharacter);
+    }
+
+    static void PlaceKey(Button key, float left, float top, int span, float keyWidth, float keyHeight, float gap)
+    {
+        var rect = key.GetComponent<RectTransform>();
+        SetAnchors(rect, new Vector2(left, top - keyHeight), new Vector2(left + span * keyWidth, top));
+        rect.offsetMin = new Vector2(gap, gap);
+        rect.offsetMax = new Vector2(-gap, -gap);
     }
 
     static void SetKeyboardKeyReference(KeyboardKey key, JoinMenu joinMenu, string keyValue)
@@ -378,25 +422,6 @@ public static class LandingMenuBuilder
         serializedKey.FindProperty("joinMenu").objectReferenceValue = joinMenu;
         serializedKey.FindProperty("keyValue").stringValue = keyValue;
         serializedKey.ApplyModifiedPropertiesWithoutUndo();
-    }
-
-    static void CreateDirectionalLight()
-    {
-        var lightObject = new GameObject("Directional Light");
-        Undo.RegisterCreatedObjectUndo(lightObject, "Create Directional Light");
-        lightObject.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
-        var light = lightObject.AddComponent<Light>();
-        light.type = LightType.Directional;
-        light.intensity = 2f;
-    }
-
-    static void CreateFloor()
-    {
-        var floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        Undo.RegisterCreatedObjectUndo(floor, "Create XR Floor");
-        floor.name = "XR Floor";
-        floor.transform.position = new Vector3(0f, -0.1f, 0f);
-        floor.transform.localScale = new Vector3(20f, 0.2f, 20f);
     }
 
     static void SetFullSize(RectTransform rectTransform)

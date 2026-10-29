@@ -9,6 +9,8 @@ using UnityEngine.XR.Interaction.Toolkit.UI;
 public class LandingMenu : MonoBehaviour
 {
     [SerializeField] Camera targetCamera;
+    // Where the menu pages stand in the room (at the landing backdrop's counter). Without one they follow the head.
+    [SerializeField] Transform menuAnchor;
     [SerializeField] Transform menuRoot;
     [SerializeField] Transform lobbyMenuRoot;
     [SerializeField] Transform joinMenuRoot;
@@ -52,10 +54,17 @@ public class LandingMenu : MonoBehaviour
 
     void LockMenuToCamera(Transform root)
     {
-        if (targetCamera == null)
+        if (root == null)
             return;
 
-        if (root == null)
+        if (menuAnchor != null)
+        {
+            root.SetPositionAndRotation(menuAnchor.position, menuAnchor.rotation);
+            root.localScale = Vector3.one * 0.001f;
+            return;
+        }
+
+        if (targetCamera == null)
             return;
 
         root.SetParent(targetCamera.transform, false);

@@ -192,17 +192,10 @@ namespace Projector.Networking
             Detach();
             if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
                 NetworkManager.Singleton.Shutdown();
-            if (SceneManager.GetActiveScene().name != GameScenes.LandingMenu)
-                SceneManager.LoadScene(GameScenes.LandingMenu);
+            GameScenes.ReturnToLanding();
         }
 
-        static async void ReturnToMenuAfterDisconnect()
-        {
-            var leaving = LeaveAsync();
-            if (SceneManager.GetActiveScene().name != GameScenes.LandingMenu)
-                SceneManager.LoadScene(GameScenes.LandingMenu);
-            await leaving;
-        }
+        static void ReturnToMenuAfterDisconnect() => GameScenes.ReturnToLanding();
 
         static void RaiseSessionChanged() => SessionChanged?.Invoke();
     }
