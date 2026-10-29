@@ -48,6 +48,7 @@ namespace Projector.Editor
             CreateProjectionScreen(root.transform, capture, projection);
             CreateBeam(root.transform, capture);
             CreateGame(root.transform, capture, platforms, scoreboard, banner, stage);
+            CreateCurtainCloser(root.transform);
 
             var spawner = CreatePlayerSpawner(NetworkPrefabsBuilder.AvatarPath, TableSpots());
             spawner.transform.SetParent(root.transform);
@@ -55,6 +56,25 @@ namespace Projector.Editor
 
             SaveNetworkScene(scene, ScenePath);
             Debug.Log("Gameplay added to " + ScenePath);
+        }
+
+        // Closes the room's curtains (and drops their ties) when a player is taken back to the lobby.
+        private static void CreateCurtainCloser(Transform parent)
+        {
+            var curtains = GameObject.Find("Curtains");
+            if (curtains == null)
+                throw new MissingReferenceException("'Curtains' not found in " + ScenePath);
+
+            var drapes = new Object[] { curtains.transform.Find("Left Curtain").GetComponent<MeshFilter>(), curtains.transform.Find("Right Curtain").GetComponent<MeshFilter>() };
+            var ties = new System.Collections.Generic.List<Object>();
+            foreach (MeshFilter drape in drapes)
+                foreach (Transform child in drape.transform)
+                    ties.Add(child);
+
+            var closer = new GameObject("Curtain Closer").AddComponent<TheaterCurtains>();
+            closer.transform.SetParent(parent);
+            SetReferences(closer, "drapes", drapes);
+            SetReferences(closer, "ties", ties.ToArray());
         }
 
         // Players stand along the front of the table, facing the room.
@@ -192,12 +212,12 @@ namespace Projector.Editor
 
             // Written on the platforms themselves, clear of the runners' name tags.
             // In the theater's Limelight lettering, like the posters.
-            CreateStageLabel(stage, "START", new Vector2(-13.5f, 1.5f), 0.0055f, null, new Color(0.05f, 0.2f, 0.08f)).font = HeaderFont;
-            CreateStageLabel(stage, "FINISH", new Vector2(13.5f, 1.5f), 0.0055f, null, new Color(0.3f, 0.2f, 0.02f)).font = HeaderFont;
+            CreateStageLabel(stage, "START", new Vector2(-13.5f, 1.75f), 0.00275f, null, new Color(0.05f, 0.2f, 0.08f)).font = HeaderFont;
+            CreateStageLabel(stage, "FINISH", new Vector2(13.5f, 1.75f), 0.00275f, null, new Color(0.3f, 0.2f, 0.02f)).font = HeaderFont;
             Material pole = CreateUnlitMaterial(ProjectionFolder, "StagePole", new Color(0.85f, 0.85f, 0.85f));
             Material flag = CreateUnlitMaterial(ProjectionFolder, "StageFlag", new Color(0.9f, 0.25f, 0.25f));
-            CreateCube("Flag Pole", stage, new Vector3(14.6f, 3.1f, 0.02f), new Vector3(0.08f, 2.2f, 0.01f), pole, false);
-            CreateCube("Flag", stage, new Vector3(14.2f, 3.95f, 0.01f), new Vector3(0.75f, 0.5f, 0.01f), flag, false);
+            CreateCube("Flag Pole", stage, new Vector3(14f, 3.1f, 0.02f), new Vector3(0.08f, 2.2f, 0.01f), pole, false);
+            CreateCube("Flag", stage, new Vector3(13.6f, 3.95f, 0.01f), new Vector3(0.75f, 0.5f, 0.01f), flag, false);
 
             // Dark, like everything else drawn on the off-white film.
             banner = CreateStageLabel(stage, "", new Vector2(0f, 6.5f), 0.025f, "Countdown", Ink);

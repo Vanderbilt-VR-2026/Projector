@@ -48,7 +48,7 @@ namespace Projector.Gameplay
         [SerializeField] float countdownSeconds = 3f;
         [SerializeField] float timeLimitSeconds = 90f;
         [SerializeField] float startX = -13.5f;
-        [SerializeField] float finishX = 12.2f;
+        [SerializeField] float finishX = 12.95f;
         [SerializeField] float pitHeight = 1f;
 
         public static RaceManager Current { get; private set; }
@@ -72,7 +72,7 @@ namespace Projector.Gameplay
         }
 
         // Each slot lines up side by side on the start platform.
-        public Vector3 StartPoint(int slot) => stage.TransformPoint(new Vector3(startX + (slot - 1.5f) * 0.6f, 2.65f, 0f));
+        public Vector3 StartPoint(int slot) => stage.TransformPoint(new Vector3(startX + (slot - 1.5f) * 0.4f, 2.65f, 0f));
 
         public Vector2 ToLevel(Vector3 world) => stage.InverseTransformPoint(world);
 

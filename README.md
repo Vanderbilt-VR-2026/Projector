@@ -27,7 +27,9 @@ In the projector room:
 
 1. **Build.** Grab an item off the table (grip), move it into the projector's beam, then hold it steady for 2 seconds to confirm and lock its placement. Small hand motion is tolerated. Items cannot overlap: an invalid item turns red and returns to its last clear pose if released, while a valid confirmation fills yellow. The projector shows a live, stylized 2D drawing of every placed item on the theater screen. You have 90 s, or pull the rope beside the screen (or press the projector's first button); the square of light by the rope says what a pull does.
 2. **Race.** The drawn shapes lock in as platforms with a coin over each, and everyone races on the screen: left thumbstick runs, A jumps. Points: 1000/750/500/250 by finish place, +100 per coin, -50 per fall. The host can pull the rope to end the race early.
-3. **Results** are projected on the screen. The host pulls the rope to play again (back to building, props where they were), or pulls it twice in quick succession to leave; everyone else pulls it to leave.
+3. **Results** are projected on the screen. The host pulls the rope to play again (back to building, props where they were); everyone else pulls it to leave.
+
+At any point, pulling the rope twice in quick succession leaves: the curtains' ties drop, the curtains slide shut over the screen, and you're taken back to the lobby.
 
 The projector films an off-screen 2D stage with an orthographic camera; the wall shows that image through `Projector/Projection Screen` (hotspot falloff, soft focus and glow, color fringing, scanlines, flicker, dust).
 

@@ -22,10 +22,11 @@ namespace Projector.Gameplay
     //   Building - players hang props in the beam; the wall shows a live 2D projection of them.
     //   Racing   - pulling the rope (or the projector button) locks the shapes in as platforms and everyone
     //              races on the wall.
-    //   Results  - the scoreboard is projected; the host pulls the rope to play again (back to Building), or
-    //              pulls it twice in quick succession to leave, and everyone else pulls it to leave.
-    // The host can also pull the rope at any point in a race to end it and go straight to results. What a pull
-    // does right now is written in the square of light beside the rope.
+    //   Results  - the scoreboard is projected; the host pulls the rope to play again (back to Building), and
+    //              everyone else pulls it to leave.
+    // The host can also pull the rope at any point in a race to end it and go straight to results. In any phase,
+    // pulling twice in quick succession leaves: the curtains close and the player is taken back to the lobby.
+    // What a pull does right now is written in the square of light beside the rope.
     public class ProjectorGame : NetworkBehaviour
     {
         const float PreviewInterval = 0.1f;
@@ -60,11 +61,13 @@ namespace Projector.Gameplay
         public readonly NetworkVariable<GamePhase> Phase = new NetworkVariable<GamePhase>();
         readonly NetworkVariable<double> buildEndTime = new NetworkVariable<double>();
         const float SecondPullSeconds = 2.5f;
+        const string LeaveHint = "Pull twice to leave";
 
         float nextPreview;
         float noticeUntil;
         // Host, in results: after one pull, play again when this time passes unless a second pull leaves first.
         float playAgainAt = -1f;
+        float lastPullAt = float.NegativeInfinity;
         string notice;
 
         double Now => NetworkManager.ServerTime.Time;
@@ -145,6 +148,15 @@ namespace Projector.Gameplay
 
         void OnRopePulled()
         {
+            // Two pulls in quick succession leave, whatever is on the screen.
+            if (Time.time - lastPullAt < SecondPullSeconds)
+            {
+                playAgainAt = -1f;
+                Leave();
+                return;
+            }
+            lastPullAt = Time.time;
+
             switch (Phase.Value)
             {
                 case GamePhase.Building:
@@ -156,11 +168,6 @@ namespace Projector.Gameplay
                 case GamePhase.Results:
                     if (!IsServer)
                         Leave();
-                    else if (playAgainAt >= 0f)
-                    {
-                        playAgainAt = -1f;
-                        Leave();
-                    }
                     else
                         playAgainAt = Time.time + SecondPullSeconds;
                     break;
@@ -198,8 +205,8 @@ namespace Projector.Gameplay
                 case GamePhase.Building:
                     var remaining = Mathf.Max(0f, (float)(buildEndTime.Value - Now));
                     hudText.text = Time.time < noticeUntil ? notice
-                        : buildEndTime.Value <= 0 ? "Waiting for players..."
-                        : $"Pull to start\n{(int)remaining / 60}:{(int)remaining % 60:00}";
+                        : buildEndTime.Value <= 0 ? "Waiting for players...\n" + LeaveHint
+                        : $"Pull to start\n{LeaveHint}\n{(int)remaining / 60}:{(int)remaining % 60:00}";
                     if (Time.time >= nextPreview)
                     {
                         nextPreview = Time.time + PreviewInterval;
@@ -209,7 +216,7 @@ namespace Projector.Gameplay
                         Project(evenIfEmpty: true);
                     break;
                 case GamePhase.Racing:
-                    hudText.text = IsServer ? "Pull to end race\n" + race.ClockText() : race.ClockText();
+                    hudText.text = (IsServer ? "Pull to end race\n" : "") + LeaveHint + "\n" + race.ClockText();
                     break;
                 case GamePhase.Results:
                     if (!IsServer)

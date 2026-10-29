@@ -95,28 +95,6 @@ namespace Projector.Gameplay
             return Mathf.Abs(area) / 2f;
         }
 
-        // Grows a counter-clockwise convex outline by `distance` on every side (for the drawn border):
-        // each edge moves out along its normal and neighbouring edges are re-intersected.
-        public static Vector2[] Expand(Vector2[] outline, float distance)
-        {
-            var n = outline.Length;
-            var result = new Vector2[n];
-            for (var i = 0; i < n; i++)
-            {
-                var previous = outline[(i - 1 + n) % n];
-                var current = outline[i];
-                var next = outline[(i + 1) % n];
-                var normalIn = Outward(current - previous);
-                var normalOut = Outward(next - current);
-                var bisector = (normalIn + normalOut).normalized;
-                var cos = Mathf.Max(0.25f, Vector2.Dot(bisector, normalOut));
-                result[i] = current + bisector * (distance / cos);
-            }
-            return result;
-        }
-
-        static Vector2 Outward(Vector2 edge) => new Vector2(edge.y, -edge.x).normalized;
-
         static float Cross(Vector2 o, Vector2 a, Vector2 b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
     }
 }
