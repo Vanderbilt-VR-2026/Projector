@@ -145,8 +145,12 @@ namespace Projector.Gameplay
         public void SetLocalHeadsetAvailable(bool available)
         {
             var paused = !available;
+            Debug.Log($"Headset availability: available={available}, localPaused={isLocallyPaused}, requestedPaused={paused}", this);
             if (paused == isLocallyPaused)
+            {
+                Debug.Log($"Local game status unchanged: {(isLocallyPaused ? "PAUSE" : "PLAY")}", this);
                 return;
+            }
 
             isLocallyPaused = paused;
             Debug.Log($"Local game status: {(paused ? "PAUSE" : "PLAY")}", this);
