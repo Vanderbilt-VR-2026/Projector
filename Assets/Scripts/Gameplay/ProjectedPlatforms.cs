@@ -65,7 +65,7 @@ namespace Projector.Gameplay
                 var active = i < shapes.Count;
                 preview[i].Root.SetActive(active);
                 if (active)
-                    Draw(preview[i], shapes[i].Outline, shapes[i].Color);
+                    Draw(preview[i], shapes[i].Outline, ShapeColor(shapes[i].Color));
             }
             PreviewCount = shapes.Count;
         }
@@ -86,7 +86,7 @@ namespace Projector.Gameplay
                 }
 
                 var shape = CreateShape(projected.Kind + " " + (i + 1), levelRoot);
-                Draw(shape, projected.Outline, projected.Color);
+                Draw(shape, projected.Outline, ShapeColor(projected.Color));
                 var collider = shape.Root.AddComponent<MeshCollider>();
                 collider.sharedMesh = Extrude(projected.Outline, depth);
                 collider.convex = true;
@@ -136,14 +136,16 @@ namespace Projector.Gameplay
             return meshRenderer;
         }
 
-        // Flat 2D styling: one solid color, the prop's own a touch brighter.
+        // Flat 2D styling: one solid color.
         void Draw(Shape shape, Vector2[] outline, Color color)
         {
             Fan(shape.Fill, outline);
-            Tint(shape.FillRenderer, ShapeColor(color));
+            Tint(shape.FillRenderer, color);
         }
 
-        static Color ShapeColor(Color color) => Color.Lerp(color, Color.white, 0.15f);
+        // A prop's shape is its own hue darkened like a shadow, so it stands out on the light film (pale props
+        // like the gold coin would otherwise all but vanish).
+        static Color ShapeColor(Color color) => color * 0.45f;
 
         static void Tint(Renderer target, Color color)
         {
