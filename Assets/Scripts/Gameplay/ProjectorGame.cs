@@ -1,7 +1,6 @@
 using System.Linq;
 using System.Collections.Generic;
 using Projector.Networking;
-using Unity.Collections;
 using Unity.Netcode;
 using Unity.XR.CoreUtils;
 using UnityEngine;
@@ -60,9 +59,7 @@ namespace Projector.Gameplay
         public static ProjectorGame Current { get; private set; }
 
         public readonly NetworkVariable<GamePhase> Phase = new NetworkVariable<GamePhase>();
-        public readonly NetworkVariable<bool> IsPaused = new NetworkVariable<bool>();
         readonly NetworkVariable<double> buildEndTime = new NetworkVariable<double>();
-        readonly Dictionary<ulong, bool> headAvailability = new Dictionary<ulong, bool>();
         const float SecondPullSeconds = 2.5f;
         const string LeaveHint = "Pull twice to leave";
 
@@ -72,19 +69,17 @@ namespace Projector.Gameplay
         float playAgainAt = -1f;
         float lastPullAt = float.NegativeInfinity;
         string notice;
-        double pauseStartedAt;
+        bool isLocallyPaused;
         Canvas pauseOverlay;
         Text pauseOverlayText;
-        FixedString64Bytes[] pausedPlayerNames = new FixedString64Bytes[0];
-        Coroutine pausedPlayerRefresh;
 
         double Now => NetworkManager.ServerTime.Time;
+        public bool IsLocallyPaused => isLocallyPaused;
 
         public override void OnNetworkSpawn()
         {
             Current = this;
             Phase.OnValueChanged += OnPhaseChanged;
-            IsPaused.OnValueChanged += OnPausedChanged;
             if (projectorButton != null)
                 projectorButton.selectEntered.AddListener(OnProjectorButton);
             if (rope != null)
@@ -92,9 +87,6 @@ namespace Projector.Gameplay
             HideStaticProps();
             if (IsServer)
             {
-                NetworkManager.OnClientDisconnectCallback += OnClientDisconnected;
-                foreach (var clientId in NetworkManager.ConnectedClientsIds)
-                    headAvailability[clientId] = true;
                 // Items spawned while a player is still loading this scene never reach that player, so with
                 // others joining, start building only once everyone has loaded (or after a timeout).
                 if (NetworkManager.ConnectedClientsIds.Count > 1)
@@ -107,7 +99,6 @@ namespace Projector.Gameplay
             }
             CreatePauseOverlay();
             Apply(Phase.Value);
-            ApplyPause(IsPaused.Value);
         }
 
         const float LoadTimeoutSeconds = 20f;
@@ -136,12 +127,8 @@ namespace Projector.Gameplay
         public override void OnNetworkDespawn()
         {
             Phase.OnValueChanged -= OnPhaseChanged;
-            IsPaused.OnValueChanged -= OnPausedChanged;
-            if (IsServer && NetworkManager != null)
-                NetworkManager.OnClientDisconnectCallback -= OnClientDisconnected;
             if (IsServer && NetworkManager.SceneManager != null)
                 NetworkManager.SceneManager.OnLoadEventCompleted -= OnEveryoneLoaded;
-            headAvailability.Clear();
             ClearGeneratedItems();
             if (pauseOverlay != null)
                 Destroy(pauseOverlay.gameObject);
@@ -155,31 +142,28 @@ namespace Projector.Gameplay
 
         void OnPhaseChanged(GamePhase previous, GamePhase current) => Apply(current);
 
-        void OnPausedChanged(bool previous, bool current)
+        public void SetLocalHeadsetAvailable(bool available)
         {
-            if (current)
-                pauseStartedAt = Now;
-            else if (IsServer)
-            {
-                var pauseDuration = Mathf.Max(0f, (float)(Now - pauseStartedAt));
-                buildEndTime.Value += pauseDuration;
-                race.PauseFor(pauseDuration);
-            }
+            var paused = !available;
+            if (paused == isLocallyPaused)
+                return;
 
-            ApplyPause(current);
+            isLocallyPaused = paused;
+            Debug.Log($"Local game status: {(paused ? "PAUSE" : "PLAY")}", this);
+            ApplyLocalPause();
         }
 
-        void ApplyPause(bool paused)
+        void ApplyLocalPause()
         {
-            if (hudText != null && paused)
+            if (hudText != null && isLocallyPaused)
                 hudText.text = "PAUSED\nPut your headset on";
-            UpdatePauseOverlay(paused);
+            UpdatePauseOverlay(isLocallyPaused);
 
             var building = Phase.Value == GamePhase.Building;
             foreach (var prop in FindObjectsByType<NetworkProp>(FindObjectsSortMode.None))
-                prop.SetGrabAllowed(building && !paused);
+                prop.SetGrabAllowed(building && !isLocallyPaused);
             foreach (var provider in FindObjectsByType<LocomotionProvider>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-                provider.enabled = !paused && Phase.Value != GamePhase.Racing;
+                provider.enabled = !isLocallyPaused && Phase.Value != GamePhase.Racing;
         }
 
         void CreatePauseOverlay()
@@ -218,10 +202,7 @@ namespace Projector.Gameplay
 
             pauseOverlay.gameObject.SetActive(paused);
             if (pauseOverlayText != null)
-            {
-                var names = pausedPlayerNames.Length > 0 ? "\n" + string.Join("\n", pausedPlayerNames) : "";
-                pauseOverlayText.text = $"Waiting for the following players to reconnect:{names}";
-            }
+                pauseOverlayText.text = $"Waiting for {LocalPlayerName()} to reconnect";
         }
 
         static void SetFullScreen(RectTransform rect, Vector2? minimum = null, Vector2? maximum = null)
@@ -232,105 +213,11 @@ namespace Projector.Gameplay
             rect.offsetMax = Vector2.zero;
         }
 
-        void OnClientDisconnected(ulong clientId)
+        string LocalPlayerName()
         {
-            headAvailability.Remove(clientId);
-            EvaluateHeadAvailability();
-        }
-
-        [Rpc(SendTo.Server)]
-        public void ReportHeadTrackingRpc(bool available, RpcParams rpcParams = default)
-        {
-            var clientId = rpcParams.Receive.SenderClientId;
-            headAvailability[clientId] = available;
-            Debug.Log($"Received head state: client={clientId}, available={available}", this);
-            EvaluateHeadAvailability();
-        }
-
-        [Rpc(SendTo.Everyone)]
-        void UpdatePausedPlayersRpc(FixedString64Bytes[] names)
-        {
-            pausedPlayerNames = names ?? new FixedString64Bytes[0];
-            UpdatePauseOverlay(IsPaused.Value);
-        }
-
-        void EvaluateHeadAvailability()
-        {
-            if (!IsServer)
-                return;
-
-            var paused = false;
-            foreach (var clientId in NetworkManager.ConnectedClientsIds)
-            {
-                if (headAvailability.TryGetValue(clientId, out var available) && !available)
-                {
-                    paused = true;
-                    break;
-                }
-            }
-
-            if (paused == IsPaused.Value)
-            {
-                PublishPausedPlayers();
-                return;
-            }
-
-            IsPaused.Value = paused;
-            PublishPausedPlayers();
-        }
-
-        void PublishPausedPlayers()
-        {
-            var names = new List<string>();
-            var waitingForNames = false;
-            foreach (var identity in FindObjectsByType<PlayerIdentity>(FindObjectsSortMode.None))
-            {
-                if (headAvailability.TryGetValue(identity.OwnerClientId, out var available) && !available)
-                {
-                    if (identity.DisplayName.Value.IsEmpty)
-                    {
-                        waitingForNames = true;
-                        continue;
-                    }
-
-                    names.Add(identity.DisplayName.Value.ToString());
-                }
-            }
-
-            var networkNames = new FixedString64Bytes[names.Count];
-            for (var i = 0; i < names.Count; i++)
-                networkNames[i] = names[i];
-            UpdatePausedPlayersRpc(networkNames);
-
-            if (waitingForNames && pausedPlayerRefresh == null)
-                pausedPlayerRefresh = StartCoroutine(RefreshPausedPlayerNames());
-        }
-
-        System.Collections.IEnumerator RefreshPausedPlayerNames()
-        {
-            for (var attempt = 0; attempt < 20; attempt++)
-            {
-                yield return new WaitForSeconds(0.1f);
-                if (!IsServer)
-                    break;
-
-                PublishPausedPlayers();
-                var missingName = false;
-                foreach (var identity in FindObjectsByType<PlayerIdentity>(FindObjectsSortMode.None))
-                {
-                    if (headAvailability.TryGetValue(identity.OwnerClientId, out var available)
-                        && !available && identity.DisplayName.Value.IsEmpty)
-                    {
-                        missingName = true;
-                        break;
-                    }
-                }
-
-                if (!missingName)
-                    break;
-            }
-
-            pausedPlayerRefresh = null;
+            var identity = FindObjectsByType<PlayerIdentity>(FindObjectsSortMode.None)
+                .FirstOrDefault(player => player.IsOwner && player.GetComponent<NetworkAvatar>() != null);
+            return identity != null ? identity.Name : "you";
         }
 
         void HideStaticProps()
@@ -398,17 +285,12 @@ namespace Projector.Gameplay
             if (!IsSpawned)
                 return;
 
-            if (IsPaused.Value)
-            {
-                hudText.text = "PAUSED\nPut your headset on";
-                return;
-            }
-
             switch (Phase.Value)
             {
                 case GamePhase.Building:
                     var remaining = Mathf.Max(0f, (float)(buildEndTime.Value - Now));
-                    hudText.text = Time.time < noticeUntil ? notice
+                    hudText.text = isLocallyPaused ? "PAUSED\nPut your headset on"
+                        : Time.time < noticeUntil ? notice
                         : buildEndTime.Value <= 0 ? "Waiting for players...\n" + LeaveHint
                         : $"Pull to start\n{LeaveHint}\n{(int)remaining / 60}:{(int)remaining % 60:00}";
                     if (Time.time >= nextPreview)
@@ -420,10 +302,13 @@ namespace Projector.Gameplay
                         Project(evenIfEmpty: true);
                     break;
                 case GamePhase.Racing:
-                    hudText.text = (IsServer ? "Pull to end race\n" : "") + LeaveHint + "\n" + race.ClockText();
+                    hudText.text = isLocallyPaused ? "PAUSED\nPut your headset on"
+                        : (IsServer ? "Pull to end race\n" : "") + LeaveHint + "\n" + race.ClockText();
                     break;
                 case GamePhase.Results:
-                    if (!IsServer)
+                    if (isLocallyPaused)
+                        hudText.text = "PAUSED\nPut your headset on";
+                    else if (!IsServer)
                         hudText.text = "Pull to leave";
                     else if (playAgainAt < 0f)
                         hudText.text = "Pull to play again\nPull twice to leave";
@@ -441,8 +326,6 @@ namespace Projector.Gameplay
         [Rpc(SendTo.Server)]
         void RequestProjectRpc(RpcParams rpcParams = default)
         {
-            if (IsPaused.Value)
-                return;
             if (!Project(evenIfEmpty: false))
                 NoticeRpc("Hang something in the beam first!", RpcTarget.Single(rpcParams.Receive.SenderClientId, RpcTargetUse.Temp));
         }
@@ -457,7 +340,7 @@ namespace Projector.Gameplay
         [Rpc(SendTo.Server)]
         void RequestPlayAgainRpc(RpcParams rpcParams = default)
         {
-            if (IsPaused.Value || Phase.Value != GamePhase.Results || rpcParams.Receive.SenderClientId != NetworkManager.ServerClientId)
+            if (Phase.Value != GamePhase.Results || rpcParams.Receive.SenderClientId != NetworkManager.ServerClientId)
                 return;
             race.ResetRace();
             StartBuilding();
@@ -466,7 +349,7 @@ namespace Projector.Gameplay
         [Rpc(SendTo.Server)]
         void RequestEndRaceRpc(RpcParams rpcParams = default)
         {
-            if (!IsPaused.Value && Phase.Value == GamePhase.Racing && rpcParams.Receive.SenderClientId == NetworkManager.ServerClientId)
+            if (Phase.Value == GamePhase.Racing && rpcParams.Receive.SenderClientId == NetworkManager.ServerClientId)
                 race.EndNow();
         }
 
@@ -626,9 +509,9 @@ namespace Projector.Gameplay
 
             // Items are movable only during building, and the thumbstick drives the runner during the race.
             foreach (var prop in FindObjectsByType<NetworkProp>(FindObjectsSortMode.None))
-                prop.SetGrabAllowed(building && !IsPaused.Value);
+                prop.SetGrabAllowed(building && !isLocallyPaused);
             foreach (var provider in FindObjectsByType<LocomotionProvider>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-                provider.enabled = !racing && !IsPaused.Value;
+                provider.enabled = !racing && !isLocallyPaused;
 
             if (racing)
                 FaceTheWall();

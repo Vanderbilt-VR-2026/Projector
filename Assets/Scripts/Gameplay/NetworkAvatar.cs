@@ -84,7 +84,7 @@ namespace Projector.Gameplay
 
             lastHeadAvailable = headAvailable;
             hasReportedHeadAvailability = true;
-            ProjectorGame.Current.ReportHeadTrackingRpc(headAvailable);
+            ProjectorGame.Current.SetLocalHeadsetAvailable(headAvailable);
         }
 
         // Hands and controllers swap depending on what's tracked; follow whichever is active.

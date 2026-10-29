@@ -81,7 +81,7 @@ namespace Projector.Gameplay
             if (race == null || ProjectorGame.Current == null || !race.IsRunning || finished)
             {
                 velocity.x = 0f;
-                if (ProjectorGame.Current != null && ProjectorGame.Current.IsPaused.Value)
+                if (ProjectorGame.Current != null && ProjectorGame.Current.IsLocallyPaused)
                     velocity.y = 0f;
                 body.linearVelocity = velocity;
                 jumpQueued = false;
