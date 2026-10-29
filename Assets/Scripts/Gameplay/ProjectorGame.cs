@@ -69,8 +69,12 @@ namespace Projector.Gameplay
         float playAgainAt = -1f;
         float lastPullAt = float.NegativeInfinity;
         string notice;
+        bool isLocallyPaused;
+        Canvas pauseOverlay;
+        Text pauseOverlayText;
 
         double Now => NetworkManager.ServerTime.Time;
+        public bool IsLocallyPaused => isLocallyPaused;
 
         public override void OnNetworkSpawn()
         {
@@ -93,6 +97,7 @@ namespace Projector.Gameplay
                 else
                     StartBuilding();
             }
+            CreatePauseOverlay();
             Apply(Phase.Value);
         }
 
@@ -125,6 +130,8 @@ namespace Projector.Gameplay
             if (IsServer && NetworkManager.SceneManager != null)
                 NetworkManager.SceneManager.OnLoadEventCompleted -= OnEveryoneLoaded;
             ClearGeneratedItems();
+            if (pauseOverlay != null)
+                Destroy(pauseOverlay.gameObject);
             if (projectorButton != null)
                 projectorButton.selectEntered.RemoveListener(OnProjectorButton);
             if (rope != null)
@@ -134,6 +141,88 @@ namespace Projector.Gameplay
         }
 
         void OnPhaseChanged(GamePhase previous, GamePhase current) => Apply(current);
+
+        public void SetLocalHeadsetAvailable(bool available)
+        {
+            var paused = !available;
+            Debug.Log($"Headset availability: available={available}, localPaused={isLocallyPaused}, requestedPaused={paused}", this);
+            if (paused == isLocallyPaused)
+            {
+                Debug.Log($"Local game status unchanged: {(isLocallyPaused ? "PAUSE" : "PLAY")}", this);
+                return;
+            }
+
+            isLocallyPaused = paused;
+            Debug.Log($"Local game status: {(paused ? "PAUSE" : "PLAY")}", this);
+            ApplyLocalPause();
+        }
+
+        void ApplyLocalPause()
+        {
+            if (hudText != null && isLocallyPaused)
+                hudText.text = "PAUSED\nPut your headset on";
+            UpdatePauseOverlay(isLocallyPaused);
+
+            var building = Phase.Value == GamePhase.Building;
+            foreach (var prop in FindObjectsByType<NetworkProp>(FindObjectsSortMode.None))
+                prop.SetGrabAllowed(building && !isLocallyPaused);
+            foreach (var provider in FindObjectsByType<LocomotionProvider>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                provider.enabled = !isLocallyPaused && Phase.Value != GamePhase.Racing;
+        }
+
+        void CreatePauseOverlay()
+        {
+            var overlayObject = new GameObject("Pause Overlay");
+            overlayObject.transform.SetParent(transform, false);
+            pauseOverlay = overlayObject.AddComponent<Canvas>();
+            pauseOverlay.renderMode = RenderMode.ScreenSpaceOverlay;
+            pauseOverlay.sortingOrder = 100;
+            overlayObject.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            overlayObject.AddComponent<GraphicRaycaster>();
+
+            var panelObject = new GameObject("Panel");
+            panelObject.transform.SetParent(overlayObject.transform, false);
+            var panel = panelObject.AddComponent<Image>();
+            panel.color = new Color(0f, 0f, 0f, 0.82f);
+            SetFullScreen(panel.rectTransform);
+
+            var textObject = new GameObject("Waiting For Players");
+            textObject.transform.SetParent(panelObject.transform, false);
+            pauseOverlayText = textObject.AddComponent<Text>();
+            pauseOverlayText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            pauseOverlayText.fontSize = 44;
+            pauseOverlayText.color = Color.white;
+            pauseOverlayText.alignment = TextAnchor.MiddleCenter;
+            pauseOverlayText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            pauseOverlayText.verticalOverflow = VerticalWrapMode.Overflow;
+            SetFullScreen(pauseOverlayText.rectTransform, new Vector2(0.15f, 0.15f), new Vector2(0.85f, 0.85f));
+            overlayObject.SetActive(false);
+        }
+
+        void UpdatePauseOverlay(bool paused)
+        {
+            if (pauseOverlay == null)
+                return;
+
+            pauseOverlay.gameObject.SetActive(paused);
+            if (pauseOverlayText != null)
+                pauseOverlayText.text = $"Waiting for {LocalPlayerName()} to reconnect";
+        }
+
+        static void SetFullScreen(RectTransform rect, Vector2? minimum = null, Vector2? maximum = null)
+        {
+            rect.anchorMin = minimum ?? Vector2.zero;
+            rect.anchorMax = maximum ?? Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+        }
+
+        string LocalPlayerName()
+        {
+            var identity = FindObjectsByType<PlayerIdentity>(FindObjectsSortMode.None)
+                .FirstOrDefault(player => player.IsOwner && player.GetComponent<NetworkAvatar>() != null);
+            return identity != null ? identity.Name : "you";
+        }
 
         void HideStaticProps()
         {
@@ -204,7 +293,8 @@ namespace Projector.Gameplay
             {
                 case GamePhase.Building:
                     var remaining = Mathf.Max(0f, (float)(buildEndTime.Value - Now));
-                    hudText.text = Time.time < noticeUntil ? notice
+                    hudText.text = isLocallyPaused ? "PAUSED\nPut your headset on"
+                        : Time.time < noticeUntil ? notice
                         : buildEndTime.Value <= 0 ? "Waiting for players...\n" + LeaveHint
                         : $"Pull to start\n{LeaveHint}\n{(int)remaining / 60}:{(int)remaining % 60:00}";
                     if (Time.time >= nextPreview)
@@ -216,10 +306,13 @@ namespace Projector.Gameplay
                         Project(evenIfEmpty: true);
                     break;
                 case GamePhase.Racing:
-                    hudText.text = (IsServer ? "Pull to end race\n" : "") + LeaveHint + "\n" + race.ClockText();
+                    hudText.text = isLocallyPaused ? "PAUSED\nPut your headset on"
+                        : (IsServer ? "Pull to end race\n" : "") + LeaveHint + "\n" + race.ClockText();
                     break;
                 case GamePhase.Results:
-                    if (!IsServer)
+                    if (isLocallyPaused)
+                        hudText.text = "PAUSED\nPut your headset on";
+                    else if (!IsServer)
                         hudText.text = "Pull to leave";
                     else if (playAgainAt < 0f)
                         hudText.text = "Pull to play again\nPull twice to leave";
@@ -420,9 +513,9 @@ namespace Projector.Gameplay
 
             // Items are movable only during building, and the thumbstick drives the runner during the race.
             foreach (var prop in FindObjectsByType<NetworkProp>(FindObjectsSortMode.None))
-                prop.SetGrabAllowed(building);
+                prop.SetGrabAllowed(building && !isLocallyPaused);
             foreach (var provider in FindObjectsByType<LocomotionProvider>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-                provider.enabled = !racing;
+                provider.enabled = !racing && !isLocallyPaused;
 
             if (racing)
                 FaceTheWall();
