@@ -9,7 +9,7 @@ using UnityEngine.XR.Interaction.Toolkit.UI;
 public class LandingMenu : MonoBehaviour
 {
     [SerializeField] Camera targetCamera;
-    // Where the menu pages stand in the room (step 4 of the landing backdrop). Without one they follow the head.
+    // Where the menu pages stand in the room (at the landing backdrop's counter). Without one they follow the head.
     [SerializeField] Transform menuAnchor;
     [SerializeField] Transform menuRoot;
     [SerializeField] Transform lobbyMenuRoot;

@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Projector.Gameplay
 {
     // Draws the projected 2D game on the projection stage (the plane z = 0 of this transform, filmed by the
-    // projector camera): flat colored shapes with a dark border, the look of a 2D game rather than a shadow.
+    // projector camera): flat shapes in solid colors, the look of a 2D game rather than a shadow.
     // While building it shows a live preview of the props; on PROJECT the shapes become the level: plain
     // platforms get a coin over them, hazards send runners back to the start, bounce pads launch them, and a
     // coin item becomes a pickup. Start and finish platforms are always there.
@@ -15,9 +15,8 @@ namespace Projector.Gameplay
         [SerializeField] Material shapeMaterial;
         [SerializeField] Material coinMaterial;
         [SerializeField] float depth = 1.5f;
-        [SerializeField] float borderWidth = 0.12f;
-        [Tooltip("Always-present platforms in level coordinates (start, finish).")]
-        [SerializeField] Rect[] fixedPlatforms = { new Rect(-10f, 1f, 3f, 1f), new Rect(7f, 1f, 3f, 1f) };
+        [Tooltip("Always-present platforms in level coordinates (start, finish), their tops at y = 2.")]
+        [SerializeField] Rect[] fixedPlatforms = { new Rect(-14.25f, 1.5f, 1.5f, 0.5f), new Rect(12.75f, 1.5f, 1.5f, 0.5f) };
         [SerializeField] Color[] fixedColors = { new Color(0.3f, 0.75f, 0.4f), new Color(0.95f, 0.72f, 0.2f) };
 
         readonly List<Shape> preview = new List<Shape>();
@@ -31,9 +30,7 @@ namespace Projector.Gameplay
         {
             public GameObject Root;
             public Mesh Fill;
-            public Mesh Border;
             public MeshRenderer FillRenderer;
-            public MeshRenderer BorderRenderer;
         }
 
         void Awake()
@@ -68,7 +65,7 @@ namespace Projector.Gameplay
                 var active = i < shapes.Count;
                 preview[i].Root.SetActive(active);
                 if (active)
-                    Draw(preview[i], shapes[i].Outline, shapes[i].Color);
+                    Draw(preview[i], shapes[i].Outline, ShapeColor(shapes[i].Color));
             }
             PreviewCount = shapes.Count;
         }
@@ -89,7 +86,7 @@ namespace Projector.Gameplay
                 }
 
                 var shape = CreateShape(projected.Kind + " " + (i + 1), levelRoot);
-                Draw(shape, projected.Outline, projected.Color);
+                Draw(shape, projected.Outline, ShapeColor(projected.Color));
                 var collider = shape.Root.AddComponent<MeshCollider>();
                 collider.sharedMesh = Extrude(projected.Outline, depth);
                 collider.convex = true;
@@ -98,10 +95,10 @@ namespace Projector.Gameplay
                 switch (projected.Kind)
                 {
                     case ShapeKind.Hazard:
-                        shape.Root.AddComponent<Hazard>().Setup(shape.BorderRenderer, projected.Color);
+                        shape.Root.AddComponent<Hazard>().Setup(shape.FillRenderer, ShapeColor(projected.Color));
                         break;
                     case ShapeKind.Bounce:
-                        shape.Root.AddComponent<BouncePad>().Setup(shape.BorderRenderer, projected.Color);
+                        shape.Root.AddComponent<BouncePad>().Setup(shape.FillRenderer, ShapeColor(projected.Color));
                         break;
                     default:
                         CreateCoin(i, projected.Outline);
@@ -122,10 +119,8 @@ namespace Projector.Gameplay
         {
             var root = new GameObject(name);
             root.transform.SetParent(parent, false);
-            var shape = new Shape { Root = root, Fill = new Mesh { name = name + " Fill" }, Border = new Mesh { name = name + " Border" } };
+            var shape = new Shape { Root = root, Fill = new Mesh { name = name + " Fill" } };
             shape.FillRenderer = AddMesh(root.transform, "Fill", shape.Fill, 0f);
-            // The border sits just behind the fill (farther from the projector camera).
-            shape.BorderRenderer = AddMesh(root.transform, "Border", shape.Border, 0.05f);
             return shape;
         }
 
@@ -141,14 +136,16 @@ namespace Projector.Gameplay
             return meshRenderer;
         }
 
-        // Flat 2D styling: the prop's color, a touch brighter, inside a dark border of the same hue.
+        // Flat 2D styling: one solid color.
         void Draw(Shape shape, Vector2[] outline, Color color)
         {
             Fan(shape.Fill, outline);
-            Fan(shape.Border, ProjectedLevel.Expand(outline, borderWidth));
-            Tint(shape.FillRenderer, Color.Lerp(color, Color.white, 0.15f));
-            Tint(shape.BorderRenderer, color * 0.3f);
+            Tint(shape.FillRenderer, color);
         }
+
+        // A prop's shape is its own hue darkened like a shadow, so it stands out on the light film (pale props
+        // like the gold coin would otherwise all but vanish).
+        static Color ShapeColor(Color color) => color * 0.45f;
 
         static void Tint(Renderer target, Color color)
         {

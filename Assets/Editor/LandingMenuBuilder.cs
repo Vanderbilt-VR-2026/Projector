@@ -118,6 +118,7 @@ public static class LandingMenuBuilder
         SetFullSize(panel.rectTransform);
 
         var title = CreateText("PROJECTOR", panel.transform, 82, Color.white);
+        title.font = SceneBuildUtility.HeaderFont;
         SetAnchors(title.rectTransform, new Vector2(0.1f, 0.76f), new Vector2(0.9f, 0.92f));
 
         var button = CreateButton("HOST PRIVATE GAME", panel.transform);
@@ -149,8 +150,9 @@ public static class LandingMenuBuilder
         var lobbyCodeText = CreateText("", lobbyPanel.transform, 64, new Color(1f, 0.8f, 0.3f));
         SetAnchors(lobbyCodeText.rectTransform, new Vector2(0.15f, 0.65f), new Vector2(0.85f, 0.9f));
 
-        var playerListTitle = CreateText("CURRENT PLAYERS", lobbyPanel.transform, 34, Color.white);
-        SetAnchors(playerListTitle.rectTransform, new Vector2(0.2f, 0.54f), new Vector2(0.8f, 0.63f));
+        var playerListTitle = CreateText("CURRENT PLAYERS", lobbyPanel.transform, 52, Color.white);
+        playerListTitle.font = SceneBuildUtility.HeaderFont;
+        SetAnchors(playerListTitle.rectTransform, new Vector2(0.15f, 0.53f), new Vector2(0.85f, 0.65f));
 
         var playerListText = CreateText("", lobbyPanel.transform, 34, Color.white);
         SetAnchors(playerListText.rectTransform, new Vector2(0.2f, 0.32f), new Vector2(0.8f, 0.54f));
@@ -161,9 +163,9 @@ public static class LandingMenuBuilder
         SetAnchors(lobbyBackButton.GetComponent<RectTransform>(), new Vector2(0.06f, 0.06f), new Vector2(0.24f, 0.15f));
         UnityEventTools.AddPersistentListener(lobbyBackButton.onClick, controller.BackToLanding);
 
+        // Wider than BACK, so START GAME fits at the buttons' usual font size.
         var startGameButton = CreateButton("START GAME", lobbyPanel.transform);
-        SetAnchors(startGameButton.GetComponent<RectTransform>(), new Vector2(0.76f, 0.06f), new Vector2(0.94f, 0.15f));
-        startGameButton.GetComponentInChildren<Text>().fontSize = 22;
+        SetAnchors(startGameButton.GetComponent<RectTransform>(), new Vector2(0.64f, 0.06f), new Vector2(0.94f, 0.15f));
         UnityEventTools.AddPersistentListener(startGameButton.onClick, lobbyMenuController.StartGame);
 
         var randomGameMenu = CreateCanvas("Random Game Menu", controller.transform, camera);
@@ -187,6 +189,7 @@ public static class LandingMenuBuilder
         SetFullSize(joinPanel.rectTransform);
 
         var joinTitle = CreateText("JOIN GAME", joinPanel.transform, 64, Color.white);
+        joinTitle.font = SceneBuildUtility.HeaderFont;
         SetAnchors(joinTitle.rectTransform, new Vector2(0.1f, 0.86f), new Vector2(0.9f, 0.96f));
 
         var codeInput = CreateInputField(joinPanel.transform);
@@ -213,7 +216,7 @@ public static class LandingMenuBuilder
         EditorSceneManager.MarkSceneDirty(landingMenu.scene);
     }
 
-    // The menus stand at the backdrop's step 4 instead of following the head (LandingMenu re-applies this at runtime).
+    // The menus stand at the backdrop's counter instead of following the head (LandingMenu re-applies this at runtime).
     static void PlaceMenusAtPlaySpot(LandingMenu controller, params Transform[] menus)
     {
         var playSpot = GameObject.Find(LandingBackdropBuilder.PlaySpotName);
@@ -327,7 +330,8 @@ public static class LandingMenuBuilder
         textObject.transform.SetParent(parent, false);
         var text = textObject.AddComponent<Text>();
         text.text = value;
-        text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        // Josefin Sans, like the posters' text; headings switch to Limelight.
+        text.font = SceneBuildUtility.BodyFont;
         text.horizontalOverflow = HorizontalWrapMode.Overflow;
         text.verticalOverflow = VerticalWrapMode.Overflow;
         text.fontSize = fontSize;
@@ -345,7 +349,7 @@ public static class LandingMenuBuilder
         var image = buttonObject.AddComponent<Image>();
         image.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
         image.type = Image.Type.Sliced;
-        image.color = new Color(0.1f, 0.45f, 0.62f, 1f);
+        image.color = SceneBuildUtility.ButtonColor;
         var button = buttonObject.AddComponent<Button>();
         button.targetGraphic = image;
 

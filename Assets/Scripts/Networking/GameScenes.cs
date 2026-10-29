@@ -1,3 +1,4 @@
+using Projector.Gameplay;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -31,12 +32,28 @@ namespace Projector.Networking
             SceneManager.LoadScene(sceneName, LoadSceneMode.Single);
         }
 
-        // Back to the menu at once; the session is closed in the background.
+        static bool returning;
+
+        // Back to the menu: in the theater the curtains close first, then the session is closed in the background
+        // while the menu loads. Leaving by choice, being sent out by the host and losing the connection all end here.
         public static async void ReturnToLanding()
         {
-            var leaving = SessionService.LeaveAsync();
-            SceneManager.LoadScene(LandingMenu, LoadSceneMode.Single);
-            await leaving;
+            if (returning)
+                return;
+            returning = true;
+            try
+            {
+                if (TheaterCurtains.Current != null)
+                    await TheaterCurtains.Current.CloseAsync();
+                var leaving = SessionService.LeaveAsync();
+                if (SceneManager.GetActiveScene().name != LandingMenu)
+                    SceneManager.LoadScene(LandingMenu, LoadSceneMode.Single);
+                await leaving;
+            }
+            finally
+            {
+                returning = false;
+            }
         }
     }
 }

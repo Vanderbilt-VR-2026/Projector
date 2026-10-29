@@ -23,22 +23,30 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
+    - _Grain:
+        m_Texture: {fileID: 2800000, guid: f0b67500f7fad3b4c9f2b13e8f41ba6e, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _MainTex:
         m_Texture: {fileID: 8400000, guid: 836be6423a6574d039c180369c1267a5, type: 2}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Ambient: 0.22
-    - _Bloom: 0.45
-    - _Brightness: 1.7
+    - _Ambient: 0
+    - _Bloom: 0.12
+    - _Brightness: 1.05
     - _Dust: 0.35
     - _Flicker: 0.035
     - _Fringe: 0.0025
+    - _GrainScale: 4
+    - _GrainStrength: 0.45
     - _Hotspot: 0.45
-    - _Scanlines: 0.1
+    - _Saturation: 0.5
+    - _Scanlines: 0.04
     - _Softness: 0.7
-    - _Wash: 0.03
-    m_Colors: []
+    - _Wash: 0
+    m_Colors:
+    - _Sepia: {r: 1, g: 0.95, b: 0.86, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
