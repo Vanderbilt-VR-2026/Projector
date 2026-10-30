@@ -2,6 +2,7 @@ using Projector.Networking;
 using Unity.Netcode;
 using Unity.XR.CoreUtils;
 using UnityEngine;
+using UnityEngine.XR;
 
 namespace Projector.Gameplay
 {
@@ -21,6 +22,8 @@ namespace Projector.Gameplay
         Transform rigHead;
         Transform[] rigLefts;
         Transform[] rigRights;
+        bool lastHeadAvailable;
+        bool hasReportedHeadAvailability;
 
         public override void OnNetworkSpawn()
         {
@@ -48,6 +51,7 @@ namespace Projector.Gameplay
         {
             if (IsOwner)
             {
+                PollHeadTracking();
                 if (rigHead == null)
                     return;
 
@@ -62,6 +66,25 @@ namespace Projector.Gameplay
             nameLabel.position = head.position + Vector3.up * 0.28f;
             if (viewer != null)
                 nameLabel.rotation = Quaternion.LookRotation(nameLabel.position - viewer.transform.position);
+        }
+
+        void PollHeadTracking()
+        {
+            var device = InputDevices.GetDeviceAtXRNode(XRNode.Head);
+            var isTracked = false;
+            var userPresence = false;
+            var hasTracking = device.isValid && device.TryGetFeatureValue(CommonUsages.isTracked, out isTracked);
+            var hasPresence = device.isValid && device.TryGetFeatureValue(CommonUsages.userPresence, out userPresence);
+            var headAvailable = hasTracking && hasPresence && isTracked && userPresence;
+            if (hasReportedHeadAvailability && headAvailable == lastHeadAvailable)
+                return;
+
+            if (ProjectorGame.Current == null || !IsSpawned)
+                return;
+
+            lastHeadAvailable = headAvailable;
+            hasReportedHeadAvailability = true;
+            ProjectorGame.Current.SetLocalHeadsetAvailable(headAvailable);
         }
 
         // Hands and controllers swap depending on what's tracked; follow whichever is active.
