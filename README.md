@@ -52,6 +52,23 @@ The most recent APK for the sprint is zipped at [`Projector.zip`](Projector.zip)
 The Sprint 2 video can be found [here](https://github.com/Vanderbilt-VR-2026/Projector/blob/main/docs/VR-SPRINT2.mov).
 The Sprint 3 demo video can be found [here](https://github.com/Vanderbilt-VR-2026/Projector/blob/main/docs/VR-SPRINT3.mov).
 
+## Audio Credits
+
+Music (from [freetouse.com/music](https://freetouse.com/music)):
+
+- Landing page: **Destiny** by Alegend (Copyright Free Music for Video)
+- Projector room, build phase: **Show Yourself** by Orchestronika (No Copyright Music, Free Download)
+- 2D race: **Mindwave** by Avanti (Free Background Music for Videos)
+
+Sound effects (all CC0 / public domain):
+
+- Coin pickup: [Plingy Coin](https://opengameart.org/content/plingy-coin) by Fupi (OpenGameArt)
+- Countdown beep, GO ding, button click: [Interface Sounds](https://kenney.nl/assets/interface-sounds) by Kenney
+- Block pick-up / let-go thunk: [RPG Audio](https://kenney.nl/assets/rpg-audio) by Kenney
+- Rope and curtain whoosh: [Whoosh 1](https://bigsoundbank.com/whoosh-1-s0572.html) (BigSoundBank)
+- Applause after a race: [Applause concert bar #3](https://bigsoundbank.com/applause-concert-bar-3-s2481.html) (BigSoundBank)
+- Landing page popcorn: [Pop-Corn: Corn bursting](https://bigsoundbank.com/pop-corn-corn-bursting-s0413.html) (BigSoundBank)
+
 ## AI Usage
 
 **1. Did each of you use AI as a personal assistant, or as a shared team member?**
