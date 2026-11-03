@@ -1,4 +1,5 @@
 using System;
+using Projector.Audio;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
@@ -56,6 +57,7 @@ namespace Projector.Gameplay
             if (hand != null && !fired && pulled >= pullDistance)
             {
                 fired = true;
+                GameAudio.RopeWhoosh();
                 Pulled?.Invoke();
             }
         }

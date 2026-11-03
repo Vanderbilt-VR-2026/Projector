@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Projector.Audio;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
@@ -89,6 +90,7 @@ namespace Projector.Gameplay
         void OnGrabbed(SelectEnterEventArgs args)
         {
             RequestGrabRpc();
+            GameAudio.Thunk(pickingUp: true);
             carried = false;
             lastValidPosition = transform.position;
             lastValidRotation = transform.rotation;
@@ -99,6 +101,7 @@ namespace Projector.Gameplay
         {
             if (OverlapsAnotherProp())
                 transform.SetPositionAndRotation(lastValidPosition, lastValidRotation);
+            GameAudio.Thunk(pickingUp: false);
             RestartHold();
             Freeze();
         }
