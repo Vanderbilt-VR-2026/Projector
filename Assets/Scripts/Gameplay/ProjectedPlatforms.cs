@@ -4,8 +4,9 @@ using UnityEngine;
 namespace Projector.Gameplay
 {
     // Draws the projected 2D game on the projection stage (the plane z = 0 of this transform, filmed by the
-    // projector camera): flat shapes in solid colors, the look of a 2D game rather than a shadow.
-    // While building it shows a live preview of the props; on PROJECT the shapes become the level: plain
+    // projector camera): each prop as the projector renders it, its faces in its own colors with the corners
+    // and edges inked in, the look of a 2D game rather than a shadow.
+    // While building it shows a live preview of the props; on PROJECT the drawings become the level: plain
     // platforms get a coin over them, hazards send runners back to the start, bounce pads launch them, and a
     // coin item becomes a pickup. Start and finish platforms are always there.
     public class ProjectedPlatforms : MonoBehaviour
@@ -14,23 +15,25 @@ namespace Projector.Gameplay
 
         [SerializeField] Material shapeMaterial;
         [SerializeField] Material coinMaterial;
+        [Tooltip("Vertex-colored material for the props' drawings (Projector/Stage Drawing).")]
+        [SerializeField] Material drawingMaterial;
         [SerializeField] float depth = 1.5f;
         [Tooltip("Always-present platforms in level coordinates (start, finish), their tops at y = 2.")]
         [SerializeField] Rect[] fixedPlatforms = { new Rect(-14.25f, 1.5f, 1.5f, 0.5f), new Rect(12.75f, 1.5f, 1.5f, 0.5f) };
         [SerializeField] Color[] fixedColors = { new Color(0.3f, 0.75f, 0.4f), new Color(0.95f, 0.72f, 0.2f) };
 
-        readonly List<Shape> preview = new List<Shape>();
+        readonly List<Drawing> preview = new List<Drawing>();
         Transform previewRoot;
         Transform levelRoot;
 
         public int LevelPlatformCount { get; private set; }
         public int PreviewCount { get; private set; }
 
-        class Shape
+        class Drawing
         {
             public GameObject Root;
-            public Mesh Fill;
-            public MeshRenderer FillRenderer;
+            public Mesh Mesh;
+            public MeshRenderer Renderer;
         }
 
         void Awake()
@@ -45,9 +48,10 @@ namespace Projector.Gameplay
             for (var i = 0; i < fixedPlatforms.Length; i++)
             {
                 var rect = fixedPlatforms[i];
-                var shape = CreateShape("Fixed Platform " + (i + 1), fixedRoot);
-                Draw(shape, Rectangle(rect), fixedColors[i % fixedColors.Length]);
-                var box = shape.Root.AddComponent<BoxCollider>();
+                var platform = CreateDrawing("Fixed Platform " + (i + 1), fixedRoot, shapeMaterial);
+                Fan(platform.Mesh, Rectangle(rect));
+                Tint(platform.Renderer, fixedColors[i % fixedColors.Length]);
+                var box = platform.Root.AddComponent<BoxCollider>();
                 box.center = new Vector3(rect.center.x, rect.center.y, 0f);
                 box.size = new Vector3(rect.width, rect.height, depth);
             }
@@ -56,52 +60,60 @@ namespace Projector.Gameplay
         public void SetPreviewVisible(bool visible) => previewRoot.gameObject.SetActive(visible);
 
         // Redraws the live preview, reusing meshes so it can run every few frames.
-        public void ShowPreview(IReadOnlyList<ProjectedShape> shapes)
+        public void ShowPreview(IReadOnlyList<ProjectedItem> items)
         {
-            while (preview.Count < shapes.Count)
-                preview.Add(CreateShape("Preview " + (preview.Count + 1), previewRoot));
+            while (preview.Count < items.Count)
+                preview.Add(CreateDrawing("Preview " + (preview.Count + 1), previewRoot, drawingMaterial));
             for (var i = 0; i < preview.Count; i++)
             {
-                var active = i < shapes.Count;
+                var active = i < items.Count;
                 preview[i].Root.SetActive(active);
                 if (active)
-                    Draw(preview[i], shapes[i].Outline, ShapeColor(shapes[i].Color));
+                    items[i].CopyTo(preview[i].Mesh);
             }
-            PreviewCount = shapes.Count;
+            PreviewCount = items.Count;
         }
 
-        public void BuildLevel(IReadOnlyList<ProjectedShape> shapes)
+        public void BuildLevel(IReadOnlyList<ProjectedItem> items)
         {
             ClearLevel();
             var solid = 0;
-            for (var i = 0; i < shapes.Count; i++)
+            for (var i = 0; i < items.Count; i++)
             {
-                var projected = shapes[i];
+                var item = items[i];
 
-                // A coin item doesn't become ground: it turns into a pickup where its shadow was.
-                if (projected.Kind == ShapeKind.Coin)
+                // A coin item doesn't become ground: it turns into a pickup where it was drawn.
+                if (item.Kind == ShapeKind.Coin)
                 {
-                    CreateCoinAt("Coin Item " + (i + 1), Center(projected.Outline));
+                    CreateCoinAt("Coin Item " + (i + 1), item.Center);
                     continue;
                 }
 
-                var shape = CreateShape(projected.Kind + " " + (i + 1), levelRoot);
-                Draw(shape, projected.Outline, ShapeColor(projected.Color));
-                var collider = shape.Root.AddComponent<MeshCollider>();
-                collider.sharedMesh = Extrude(projected.Outline, depth);
-                collider.convex = true;
+                var drawing = CreateDrawing(item.Kind + " " + (i + 1), levelRoot, drawingMaterial);
+                item.CopyTo(drawing.Mesh);
+                // One convex collider per part, so the item is solid in its own shape (an L stays an L).
+                for (var p = 0; p < item.Parts.Count; p++)
+                {
+                    var part = new GameObject("Part " + (p + 1));
+                    part.transform.SetParent(drawing.Root.transform, false);
+                    var collider = part.AddComponent<MeshCollider>();
+                    collider.sharedMesh = Extrude(item.Parts[p], depth);
+                    collider.convex = true;
+                }
+                if (item.Parts.Count == 0)
+                    continue;
                 solid++;
 
-                switch (projected.Kind)
+                switch (item.Kind)
                 {
                     case ShapeKind.Hazard:
-                        shape.Root.AddComponent<Hazard>().Setup(shape.FillRenderer, ShapeColor(projected.Color));
+                        drawing.Root.AddComponent<Hazard>().Setup(drawing.Renderer);
                         break;
                     case ShapeKind.Bounce:
-                        shape.Root.AddComponent<BouncePad>().Setup(shape.FillRenderer, ShapeColor(projected.Color));
+                        drawing.Root.AddComponent<BouncePad>().Setup(drawing.Renderer);
                         break;
                     default:
-                        CreateCoin(i, projected.Outline);
+                        CreateCoinAt("Coin " + (i + 1), new Vector2(item.Center.x, item.Max.y + 0.6f));
                         break;
                 }
             }
@@ -115,37 +127,17 @@ namespace Projector.Gameplay
             LevelPlatformCount = 0;
         }
 
-        Shape CreateShape(string name, Transform parent)
+        Drawing CreateDrawing(string name, Transform parent, Material material)
         {
             var root = new GameObject(name);
             root.transform.SetParent(parent, false);
-            var shape = new Shape { Root = root, Fill = new Mesh { name = name + " Fill" } };
-            shape.FillRenderer = AddMesh(root.transform, "Fill", shape.Fill, 0f);
-            return shape;
-        }
-
-        MeshRenderer AddMesh(Transform parent, string name, Mesh mesh, float z)
-        {
-            var go = new GameObject(name);
-            go.transform.SetParent(parent, false);
-            go.transform.localPosition = new Vector3(0f, 0f, z);
-            go.AddComponent<MeshFilter>().sharedMesh = mesh;
-            var meshRenderer = go.AddComponent<MeshRenderer>();
-            meshRenderer.sharedMaterial = shapeMaterial;
+            var mesh = new Mesh { name = name };
+            root.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var meshRenderer = root.AddComponent<MeshRenderer>();
+            meshRenderer.sharedMaterial = material;
             meshRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            return meshRenderer;
+            return new Drawing { Root = root, Mesh = mesh, Renderer = meshRenderer };
         }
-
-        // Flat 2D styling: one solid color.
-        void Draw(Shape shape, Vector2[] outline, Color color)
-        {
-            Fan(shape.Fill, outline);
-            Tint(shape.FillRenderer, color);
-        }
-
-        // A prop's shape is its own hue darkened like a shadow, so it stands out on the light film (pale props
-        // like the gold coin would otherwise all but vanish).
-        static Color ShapeColor(Color color) => color * 0.45f;
 
         static void Tint(Renderer target, Color color)
         {
@@ -153,28 +145,6 @@ namespace Projector.Gameplay
             color.a = 1f;
             block.SetColor(BaseColorId, color);
             target.SetPropertyBlock(block);
-        }
-
-        void CreateCoin(int index, Vector2[] outline)
-        {
-            var top = outline[0];
-            var center = Vector2.zero;
-            foreach (var point in outline)
-            {
-                center += point;
-                if (point.y > top.y)
-                    top = point;
-            }
-            center /= outline.Length;
-            CreateCoinAt("Coin " + (index + 1), new Vector2(center.x, top.y + 0.6f));
-        }
-
-        static Vector2 Center(Vector2[] outline)
-        {
-            var center = Vector2.zero;
-            foreach (var point in outline)
-                center += point;
-            return center / outline.Length;
         }
 
         void CreateCoinAt(string name, Vector2 position)

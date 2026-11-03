@@ -12,13 +12,12 @@ namespace Projector.Gameplay
         [SerializeField] float pulseSpeed = 5f;
 
         Renderer shape;
-        Color baseColor;
         MaterialPropertyBlock block;
 
-        public void Setup(Renderer shapeRenderer, Color shapeColor)
+        // The drawing's colors are tinted toward the pulse color and back.
+        public void Setup(Renderer shapeRenderer)
         {
             shape = shapeRenderer;
-            baseColor = shapeColor;
             block = new MaterialPropertyBlock();
         }
 
@@ -27,7 +26,7 @@ namespace Projector.Gameplay
             if (shape == null)
                 return;
             var t = 0.5f + 0.5f * Mathf.Sin(Time.time * pulseSpeed);
-            var color = Color.Lerp(baseColor, pulseColor, t);
+            var color = Color.Lerp(Color.white, pulseColor, t);
             color.a = 1f;
             block.SetColor(BaseColorId, color);
             shape.SetPropertyBlock(block);

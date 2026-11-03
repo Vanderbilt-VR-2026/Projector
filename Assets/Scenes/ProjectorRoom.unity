@@ -2778,7 +2778,14 @@ MonoBehaviour:
     height: 6
   levelMin: {x: -15, y: 0}
   levelMax: {x: 15, y: 10}
-  minimumArea: 0.05
+  minimumPartArea: 0.004
+  lightOffset: {x: 0.3, y: 1.6, z: -0.8}
+  lightStrength: 0.8
+  lightFalloff: 0.12
+  skyLight: {r: 0.56, g: 0.56, b: 0.58, a: 1}
+  groundLight: {r: 0.34, g: 0.32, b: 0.3, a: 1}
+  lensLight: 0.2
+  highlights: 0.35
 --- !u!1 &730800983
 GameObject:
   m_ObjectHideFlags: 0
@@ -6370,6 +6377,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Projector.Gameplay.ProjectedPlatforms
   shapeMaterial: {fileID: 2100000, guid: 8e0f3ddfdb49a48cd84575289744456e, type: 2}
   coinMaterial: {fileID: 2100000, guid: 8e0f3ddfdb49a48cd84575289744456e, type: 2}
+  drawingMaterial: {fileID: 2100000, guid: 7ce4fc9881453463794d79b71e2eae10, type: 2}
   depth: 1.5
   fixedPlatforms:
   - serializedVersion: 2

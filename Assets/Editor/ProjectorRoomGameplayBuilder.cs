@@ -209,6 +209,7 @@ namespace Projector.Editor
             platforms = stage.gameObject.AddComponent<ProjectedPlatforms>();
             SetReference(platforms, "shapeMaterial", shapes);
             SetReference(platforms, "coinMaterial", shapes);
+            SetReference(platforms, "drawingMaterial", CreateDrawingMaterial());
 
             // Written on the platforms themselves, clear of the runners' name tags.
             // In the theater's Limelight lettering, like the posters.
@@ -249,6 +250,23 @@ namespace Projector.Editor
             SetBool(scoreboard, "showMockOnStart", false);
             results.gameObject.SetActive(false);
             return stage;
+        }
+
+        // The props' drawings carry their colors in the mesh (see ProjectionCapture).
+        public static Material CreateDrawingMaterial()
+        {
+            EnsureFolder(ProjectionFolder);
+            const string path = ProjectionFolder + "/StageDrawing.mat";
+            var shader = Shader.Find("Projector/Stage Drawing");
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(shader) { name = "StageDrawing" };
+                AssetDatabase.CreateAsset(material, path);
+            }
+            material.shader = shader;
+            EditorUtility.SetDirty(material);
+            return material;
         }
 
         private static Text CreateStageLabel(Transform stage, string text, Vector2 position, float scale = 0.008f, string name = null, Color? color = null)
@@ -319,6 +337,8 @@ namespace Projector.Editor
             material.SetFloat("_Ambient", 0f);
             material.SetFloat("_Scanlines", 0.04f);
             material.SetFloat("_GrainStrength", 0.45f);
+            // Muted like old film, but the props' own colors still read.
+            material.SetFloat("_Saturation", 0.85f);
             EditorUtility.SetDirty(material);
 
             Rect screen = capture.Screen;
