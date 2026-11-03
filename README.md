@@ -58,7 +58,7 @@ Music (from [freetouse.com/music](https://freetouse.com/music)):
 
 - Landing page: **Destiny** by Alegend (Copyright Free Music for Video)
 - Projector room, build phase: **Show Yourself** by Orchestronika (No Copyright Music, Free Download)
-- 2D race: **Mindwave** by Avanti (Free Background Music for Videos)
+- 2D race: **Imagination** by Alegend (Music for Video, Free Download)
 
 Sound effects (all CC0 / public domain):
 

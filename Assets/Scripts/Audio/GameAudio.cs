@@ -20,7 +20,7 @@ namespace Projector.Audio
 
         static GameAudio instance;
 
-        AudioClip destiny, showYourself, mindwave;
+        AudioClip destiny, showYourself, imagination;
         AudioClip coin, beep, go, whoosh, thunk, applause, popcorn, click;
         AudioSource music, ambience, effects, curtainSource, thunkSource;
         Song song;
@@ -42,7 +42,7 @@ namespace Projector.Audio
             instance = this;
             destiny = Load("Music/Destiny");
             showYourself = Load("Music/ShowYourself");
-            mindwave = Load("Music/Mindwave");
+            imagination = Load("Music/Imagination");
             coin = Load("Sfx/Coin");
             beep = Load("Sfx/Beep");
             go = Load("Sfx/Go");
@@ -163,7 +163,7 @@ namespace Projector.Audio
                 music.Stop();
             }
 
-            var clip = next == Song.Landing ? destiny : next == Song.BuildPhase ? showYourself : next == Song.Race ? mindwave : null;
+            var clip = next == Song.Landing ? destiny : next == Song.BuildPhase ? showYourself : next == Song.Race ? imagination : null;
             if (clip == null)
                 yield break;
             music.clip = clip;
