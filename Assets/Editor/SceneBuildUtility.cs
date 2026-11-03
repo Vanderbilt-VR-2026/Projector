@@ -96,11 +96,18 @@ namespace Projector.Editor
             RenderSettings.fog = false;
         }
 
-        // A faint pyramid of light from `lens` to the four `corners` of a projected image, drawn with the
-        // Projector Beam shader. The mesh is saved at `meshPath` (updated in place on a rebuild).
+        // A faint cone of light from `lens` to the four `corners` of a projected image, drawn with the Projector
+        // Beam shader as a soft glowing volume. The mesh only bounds it: a cone with a rounded-rectangle
+        // cross-section a little wider than the image (so the light's fuzzy edge fits inside), closed at the far
+        // end. The beam's shape goes to the material. The mesh is saved at `meshPath` (updated in place on a rebuild).
         public static GameObject CreateBeam(string name, Transform parent, Vector3 lens, Vector3[] corners, string meshPath)
         {
             const string materialPath = "Assets/Generated/Projection/ProjectorBeam.mat";
+            const int segments = 48;
+            // Squareness of the cross-section (2 = ellipse, higher = closer to a rectangle), and how far past the
+            // image the bounds reach (beyond the shader's fuzzy edge).
+            const float squareness = 5f;
+            const float bounds = 1.25f;
             EnsureFolder("Assets/Generated/Projection");
             var material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
             if (material == null)
@@ -109,23 +116,46 @@ namespace Projector.Editor
                 AssetDatabase.CreateAsset(material, materialPath);
             }
 
-            var vertices = new Vector3[8];
-            var colors = new Color[8];
-            var triangles = new int[12];
-            for (int i = 0; i < 4; i++)
+            var center = (corners[0] + corners[1] + corners[2] + corners[3]) / 4f;
+            var across = (corners[1] - corners[0]) / 2f;
+            var up = (corners[3] - corners[0]) / 2f;
+            material.SetVector("_Lens", lens);
+            material.SetVector("_Axis", center - lens);
+            material.SetVector("_Across", across);
+            material.SetVector("_Up", up);
+            material.SetFloat("_Intensity", 0.03f);
+            material.SetFloat("_Softness", 0.18f);
+            material.SetFloat("_WallFade", 0.14f);
+            EditorUtility.SetDirty(material);
+
+            // Apex, the far ring, and the far ring's center.
+            var corner = new Vector3[segments + 2];
+            corner[0] = lens;
+            for (int i = 0; i < segments; i++)
             {
-                vertices[i * 2] = lens;
-                vertices[i * 2 + 1] = corners[i];
-                colors[i * 2] = new Color(1f, 1f, 1f, 0.045f);
-                colors[i * 2 + 1] = new Color(1f, 1f, 1f, 0.006f);
+                float angle = i * 2f * Mathf.PI / segments;
+                float cos = Mathf.Cos(angle), sin = Mathf.Sin(angle);
+                // Superellipse |x|^n + |y|^n = 1.
+                float x = Mathf.Sign(cos) * Mathf.Pow(Mathf.Abs(cos), 2f / squareness);
+                float y = Mathf.Sign(sin) * Mathf.Pow(Mathf.Abs(sin), 2f / squareness);
+                corner[1 + i] = center + (across * x + up * y) * bounds;
             }
-            // Each side: lens, this corner, next corner (the lens vertex is duplicated per side).
-            for (int i = 0; i < 4; i++)
+            corner[segments + 1] = center;
+
+            // Sides and far cap, each triangle with its own outward normal (the shader tells the near side of the
+            // cone from the far side by it).
+            var vertices = new List<Vector3>();
+            var normals = new List<Vector3>();
+            for (int i = 0; i < segments; i++)
             {
-                triangles[i * 3] = i * 2;
-                triangles[i * 3 + 1] = i * 2 + 1;
-                triangles[i * 3 + 2] = ((i + 1) % 4) * 2 + 1;
+                var a = corner[1 + i];
+                var b = corner[1 + (i + 1) % segments];
+                AddOutward(vertices, normals, lens, a, b, (a + b) / 2f - center);
+                AddOutward(vertices, normals, center, a, b, center - lens);
             }
+            var triangles = new int[vertices.Count];
+            for (int i = 0; i < triangles.Length; i++)
+                triangles[i] = i;
             var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(meshPath);
             if (mesh == null)
             {
@@ -133,9 +163,9 @@ namespace Projector.Editor
                 AssetDatabase.CreateAsset(mesh, meshPath);
             }
             mesh.Clear();
-            mesh.vertices = vertices;
-            mesh.colors = colors;
-            mesh.triangles = triangles;
+            mesh.SetVertices(vertices);
+            mesh.SetNormals(normals);
+            mesh.SetTriangles(triangles, 0);
             mesh.RecalculateBounds();
             EditorUtility.SetDirty(mesh);
 
@@ -148,6 +178,22 @@ namespace Projector.Editor
             beamRenderer.shadowCastingMode = ShadowCastingMode.Off;
             beamRenderer.receiveShadows = false;
             return beam;
+        }
+
+        // Adds triangle a-b-c, flipped if needed so it faces `outward`, with that face's normal.
+        private static void AddOutward(List<Vector3> vertices, List<Vector3> normals, Vector3 a, Vector3 b, Vector3 c, Vector3 outward)
+        {
+            var normal = Vector3.Cross(b - a, c - a).normalized;
+            if (Vector3.Dot(normal, outward) < 0f)
+            {
+                (b, c) = (c, b);
+                normal = -normal;
+            }
+            vertices.Add(a);
+            vertices.Add(b);
+            vertices.Add(c);
+            for (int i = 0; i < 3; i++)
+                normals.Add(normal);
         }
 
         // A unit box (-0.5..0.5) with rounded edges and corners of `radius`, `segments` quads across each face: a
