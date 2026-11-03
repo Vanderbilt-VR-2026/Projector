@@ -32,6 +32,7 @@ namespace Projector.Audio
         float musicLevel;
         float lastMusicTime;
         bool musicLooped;
+        bool popcornOn;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Create()
@@ -46,6 +47,9 @@ namespace Projector.Audio
         void Awake()
         {
             instance = this;
+            // If the app was launched with the headset off, the Quest opened the audio output before the app had a
+            // window and nothing played through it is heard. A fresh output fixes that; nothing is playing yet.
+            ResetAudioOutput();
             destiny = Load("Music/Destiny");
             showYourself = Load("Music/ShowYourself");
             imagination = Load("Music/Imagination");
@@ -118,6 +122,29 @@ namespace Projector.Audio
                 var restarting = musicLooped ? Mathf.Clamp01(time / SongEndFadeSeconds) : 1f;
                 music.volume = musicLevel * ending * restarting;
             }
+        }
+
+        // The Quest pauses the app whenever the headset comes off, and its audio output can come back silent. On
+        // resume, open a fresh output and pick the song and popcorn up where they were (a reset stops every source).
+        void OnApplicationPause(bool paused)
+        {
+            if (paused || music == null)
+                return;
+            ResetAudioOutput();
+            if (song != Song.None && musicLevel > 0f && music.clip != null
+                && (music.loop || lastMusicTime < music.clip.length - SongEndFadeSeconds))
+            {
+                music.time = lastMusicTime;
+                music.Play();
+            }
+            if (popcornOn && popcorn != null)
+                ambience.Play();
+        }
+
+        static void ResetAudioOutput()
+        {
+            var reset = AudioSettings.Reset(AudioSettings.GetConfiguration());
+            Debug.Log($"Game audio: output reset {(reset ? "succeeded" : "failed")}.");
         }
 
         static void Play(AudioClip clip, float volume)
@@ -204,6 +231,7 @@ namespace Projector.Audio
 
         void SetPopcorn(bool on)
         {
+            popcornOn = on;
             if (popcorn == null)
                 return;
             if (ambienceFade != null)
