@@ -10,20 +10,19 @@ namespace Projector.Gameplay
 
         [Tooltip("Upward speed given to a runner landing on the pad (a normal jump is 8.5).")]
         [SerializeField] float launchSpeed = 15f;
-        [SerializeField] Color flashColor = new Color(1f, 0.95f, 0.4f);
+        [Tooltip("Tint on the drawing's colors during a flash (above 1 brightens).")]
+        [SerializeField] Color flashColor = new Color(1.6f, 1.5f, 0.8f);
         [SerializeField] float flashSeconds = 0.25f;
 
         Renderer shape;
-        Color restColor;
         MaterialPropertyBlock block;
         float flashUntil;
 
         public float LaunchSpeed => launchSpeed;
 
-        public void Setup(Renderer shapeRenderer, Color shapeColor)
+        public void Setup(Renderer shapeRenderer)
         {
             shape = shapeRenderer;
-            restColor = shapeColor;
             block = new MaterialPropertyBlock();
         }
 
@@ -33,7 +32,7 @@ namespace Projector.Gameplay
         {
             if (shape == null)
                 return;
-            var color = Time.time < flashUntil ? flashColor : restColor;
+            var color = Time.time < flashUntil ? flashColor : Color.white;
             color.a = 1f;
             block.SetColor(BaseColorId, color);
             shape.SetPropertyBlock(block);

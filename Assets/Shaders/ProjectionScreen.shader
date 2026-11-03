@@ -21,7 +21,7 @@ Shader "Projector/Projection Screen"
         _Grain ("Film Grain", 2D) = "gray" {}
         _GrainStrength ("Grain Strength", Range(0, 1)) = 0.3
         _GrainScale ("Grain Scale", Float) = 4
-        _Saturation ("Saturation", Range(0, 1)) = 0.5
+        _Saturation ("Saturation", Range(0, 1)) = 0.85
         _Sepia ("Film Tint", Color) = (1, 0.95, 0.86, 1)
     }
 

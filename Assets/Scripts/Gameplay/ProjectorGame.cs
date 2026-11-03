@@ -458,26 +458,45 @@ namespace Projector.Gameplay
 
         // Host: freeze the current projection as the level, send it to everyone, start the race. A button press
         // with an empty beam is refused (start and finish alone can't be crossed); the timer runs out regardless.
+        // Everyone draws the level from the same prop poses, the host's, so all players race on the same shapes.
         bool Project(bool evenIfEmpty)
         {
             if (Phase.Value != GamePhase.Building)
                 return true;
 
-            var shapes = capture.Capture();
-            if (shapes.Count == 0 && !evenIfEmpty)
+            var props = new List<Transform>();
+            foreach (var prop in capture.PropsInBeam())
+                if (prop.TryGetComponent(out NetworkObject networkObject) && networkObject.IsSpawned)
+                    props.Add(prop);
+            if (capture.Capture(props, null, false).Count == 0 && !evenIfEmpty)
                 return false;
 
-            ProjectedLevel.Pack(shapes, out var points, out var counts, out var colors, out var kinds);
-            BuildLevelRpc(points, counts, colors, kinds);
+            var ids = new ulong[props.Count];
+            var positions = new Vector3[props.Count];
+            var rotations = new Quaternion[props.Count];
+            for (var i = 0; i < props.Count; i++)
+            {
+                ids[i] = props[i].GetComponent<NetworkObject>().NetworkObjectId;
+                props[i].GetPositionAndRotation(out positions[i], out rotations[i]);
+            }
+            BuildLevelRpc(ids, positions, rotations);
             Phase.Value = GamePhase.Racing;
             race.BeginRace();
             return true;
         }
 
         [Rpc(SendTo.Everyone)]
-        void BuildLevelRpc(Vector2[] points, int[] counts, Color[] colors, int[] kinds)
+        void BuildLevelRpc(ulong[] ids, Vector3[] positions, Quaternion[] rotations)
         {
-            platforms.BuildLevel(ProjectedLevel.Unpack(points, counts, colors, kinds));
+            var props = new List<Transform>();
+            var poses = new List<Pose>();
+            for (var i = 0; i < ids.Length; i++)
+                if (NetworkManager.SpawnManager.SpawnedObjects.TryGetValue(ids[i], out var networkObject))
+                {
+                    props.Add(networkObject.transform);
+                    poses.Add(new Pose(positions[i], rotations[i]));
+                }
+            platforms.BuildLevel(capture.Capture(props, poses, true));
         }
 
         // Host: called by the race when it ends.
