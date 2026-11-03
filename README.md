@@ -66,7 +66,7 @@ Sound effects (all CC0 / public domain):
 - Countdown beep, GO ding, button click: [Interface Sounds](https://kenney.nl/assets/interface-sounds) by Kenney
 - Block pick-up / let-go thunk: [RPG Audio](https://kenney.nl/assets/rpg-audio) by Kenney
 - Rope and curtain whoosh: [Whoosh 1](https://bigsoundbank.com/whoosh-1-s0572.html) (BigSoundBank)
-- Applause after a race: [Applause concert bar #3](https://bigsoundbank.com/applause-concert-bar-3-s2481.html) (BigSoundBank)
+- Applause after a race: [Applause #1](https://bigsoundbank.com/applause-1-s2363.html) (BigSoundBank)
 - Landing page popcorn: [Pop-Corn: Corn bursting](https://bigsoundbank.com/pop-corn-corn-bursting-s0413.html) (BigSoundBank)
 
 ## AI Usage

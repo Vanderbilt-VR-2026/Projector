@@ -17,6 +17,8 @@ namespace Projector.Audio
         const float MusicVolume = 0.5f;
         const float PopcornVolume = 0.12f;
         const float FadeSeconds = 1.2f;
+        // Songs fade out over their last seconds instead of stopping dead, and a looping song fades back in.
+        const float SongEndFadeSeconds = 4f;
 
         static GameAudio instance;
 
@@ -26,6 +28,10 @@ namespace Projector.Audio
         Song song;
         Coroutine musicFade, ambienceFade;
         float thunkPitchFrom, thunkPitchTo;
+        // The music's level from song changes; Update scales it down near the start and end of the song.
+        float musicLevel;
+        float lastMusicTime;
+        bool musicLooped;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Create()
@@ -101,6 +107,17 @@ namespace Projector.Audio
         {
             if (thunkSource.isPlaying && thunk != null)
                 thunkSource.pitch = Mathf.Lerp(thunkPitchFrom, thunkPitchTo, thunkSource.time / thunk.length);
+
+            if (music.isPlaying && music.clip != null)
+            {
+                var time = music.time;
+                if (time < lastMusicTime)
+                    musicLooped = true;
+                lastMusicTime = time;
+                var ending = Mathf.Clamp01((music.clip.length - time) / SongEndFadeSeconds);
+                var restarting = musicLooped ? Mathf.Clamp01(time / SongEndFadeSeconds) : 1f;
+                music.volume = musicLevel * ending * restarting;
+            }
         }
 
         static void Play(AudioClip clip, float volume)
@@ -155,9 +172,9 @@ namespace Projector.Audio
             var faded = 0f;
             if (music.isPlaying)
             {
-                for (var start = music.volume; music.volume > 0f; faded += Time.unscaledDeltaTime)
+                for (var start = musicLevel; musicLevel > 0f; faded += Time.unscaledDeltaTime)
                 {
-                    music.volume = Mathf.MoveTowards(music.volume, 0f, start / FadeSeconds * Time.unscaledDeltaTime);
+                    musicLevel = Mathf.MoveTowards(musicLevel, 0f, start / FadeSeconds * Time.unscaledDeltaTime);
                     yield return null;
                 }
                 music.Stop();
@@ -168,16 +185,19 @@ namespace Projector.Audio
                 yield break;
             music.clip = clip;
             music.loop = next != Song.BuildPhase;
+            musicLevel = 0f;
             music.volume = 0f;
+            musicLooped = false;
             // The fade-out took time; skip ahead by it so the song still ends on cue.
             var time = next == Song.BuildPhase ? startAt + faded : startAt;
             if (time >= clip.length)
                 yield break;
             music.time = time;
+            lastMusicTime = time;
             music.Play();
-            while (music.volume < MusicVolume)
+            while (musicLevel < MusicVolume)
             {
-                music.volume = Mathf.MoveTowards(music.volume, MusicVolume, MusicVolume / FadeSeconds * Time.unscaledDeltaTime);
+                musicLevel = Mathf.MoveTowards(musicLevel, MusicVolume, MusicVolume / FadeSeconds * Time.unscaledDeltaTime);
                 yield return null;
             }
         }
