@@ -2,7 +2,6 @@ using System.Linq;
 using System.Collections.Generic;
 using Projector.Networking;
 using Unity.Netcode;
-using Unity.XR.CoreUtils;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit;
@@ -40,8 +39,6 @@ namespace Projector.Gameplay
         [SerializeField] Text hudText;
         [SerializeField] PullRope rope;
         [SerializeField] XRBaseInteractable projectorButton;
-        [Tooltip("Where each player slot stands to watch the wall during the race.")]
-        [SerializeField] Transform[] viewingSpots;
 
         const float TableTop = 0.865f;
         [Tooltip("Item mock prefabs available to be placed on the table.")]
@@ -531,23 +528,11 @@ namespace Projector.Gameplay
             scoreboard.gameObject.SetActive(results);
 
             // Items are movable only during building, and the thumbstick drives the runner during the race.
+            // Players watch the race from wherever they're standing (no teleport).
             foreach (var prop in FindObjectsByType<NetworkProp>(FindObjectsSortMode.None))
                 prop.SetGrabAllowed(building && !isLocallyPaused);
             foreach (var provider in FindObjectsByType<LocomotionProvider>(FindObjectsInactive.Include, FindObjectsSortMode.None))
                 provider.enabled = !racing && !isLocallyPaused;
-
-            if (racing)
-                FaceTheWall();
-        }
-
-        void FaceTheWall()
-        {
-            var origin = FindFirstObjectByType<XROrigin>();
-            var mine = FindObjectsByType<PlayerIdentity>(FindObjectsSortMode.None).FirstOrDefault(identity => identity.IsOwner && identity.GetComponent<NetworkAvatar>() != null);
-            if (origin == null || viewingSpots.Length == 0)
-                return;
-            var spot = viewingSpots[(mine != null ? mine.Slot.Value : 0) % viewingSpots.Length];
-            origin.transform.SetPositionAndRotation(spot.position, spot.rotation);
         }
     }
 }
