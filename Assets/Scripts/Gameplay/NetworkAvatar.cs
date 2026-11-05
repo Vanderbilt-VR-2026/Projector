@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Projector.Networking;
 using Unity.Netcode;
 using Unity.XR.CoreUtils;
@@ -6,24 +7,39 @@ using UnityEngine.XR;
 
 namespace Projector.Gameplay
 {
-    // A player's head and hands in the 3D scenes. The owner copies its XR rig's poses onto the head/hand
-    // children every frame (their owner-authority NetworkTransforms sync them); everyone else sees the result.
-    // The owner hides its own avatar so it doesn't render inside the headset.
+    // A player's head, body and hands in the 3D scenes. The owner copies its XR rig's poses onto the head/hand
+    // children every frame (their owner-authority NetworkTransforms sync them); everyone else sees the result,
+    // with the body hung below the head and turned to face where the head faces. The owner hides its own avatar
+    // so it doesn't render inside the headset.
     public class NetworkAvatar : NetworkBehaviour
     {
-        static readonly string[] LeftNames = { "Left Hand", "Left Controller" };
-        static readonly string[] RightNames = { "Right Hand", "Right Controller" };
+        // How far below the eyes the body hangs, and how far behind them (the eyes sit at the front of the head).
+        const float NeckDrop = 0.2f;
+        const float NeckBack = 0.07f;
+        // Seconds the body takes to catch up when the head turns, so it doesn't spin with every glance.
+        const float BodyTurnTime = 0.25f;
 
         [SerializeField] Transform head;
+        [SerializeField] Transform body;
         [SerializeField] Transform leftHand;
         [SerializeField] Transform rightHand;
         [SerializeField] Transform nameLabel;
 
         Transform rigHead;
-        Transform[] rigLefts;
-        Transform[] rigRights;
+        HandSource[] rigLefts;
+        HandSource[] rigRights;
         bool lastHeadAvailable;
         bool hasReportedHeadAvailability;
+        float bodyYaw;
+        float bodyYawSpeed;
+
+        // A tracked pose a glove can follow, and how the glove sits on it: the gloves are modeled palm down,
+        // fingers forward, and a held controller's grip is turned a quarter roll from that.
+        struct HandSource
+        {
+            public Transform Pose;
+            public Quaternion Offset;
+        }
 
         public override void OnNetworkSpawn()
         {
@@ -39,8 +55,8 @@ namespace Projector.Gameplay
             if (origin != null)
             {
                 rigHead = origin.Camera.transform;
-                rigLefts = FindAll(origin.transform, LeftNames);
-                rigRights = FindAll(origin.transform, RightNames);
+                rigLefts = FindHand(origin.transform, "Left", "L", 90f);
+                rigRights = FindHand(origin.transform, "Right", "R", -90f);
             }
 
             if (PlayerSpawner.Current != null)
@@ -60,6 +76,8 @@ namespace Projector.Gameplay
                 CopyPose(rigRights, rightHand);
                 return;
             }
+
+            FollowHead();
 
             // Keep the name above the head and turned toward the local viewer.
             var viewer = Camera.main;
@@ -87,29 +105,58 @@ namespace Projector.Gameplay
             ProjectorGame.Current.SetLocalHeadsetAvailable(headAvailable);
         }
 
+        // The body stays upright under the head and turns toward where the head faces. Looking almost straight
+        // up or down says little about which way the player faces, so the body keeps its heading then.
+        void FollowHead()
+        {
+            if (body == null)
+                return;
+
+            var facing = Vector3.ProjectOnPlane(head.forward, Vector3.up);
+            if (facing.sqrMagnitude > 0.04f)
+            {
+                var yaw = Quaternion.LookRotation(facing).eulerAngles.y;
+                bodyYaw = Mathf.SmoothDampAngle(bodyYaw, yaw, ref bodyYawSpeed, BodyTurnTime);
+            }
+            var rotation = Quaternion.Euler(0f, bodyYaw, 0f);
+            body.SetPositionAndRotation(head.position + Vector3.down * NeckDrop + rotation * Vector3.back * NeckBack, rotation);
+        }
+
         // Hands and controllers swap depending on what's tracked; follow whichever is active.
-        static void CopyPose(Transform[] sources, Transform target)
+        static void CopyPose(HandSource[] sources, Transform target)
         {
             foreach (var source in sources)
             {
-                if (source != null && source.gameObject.activeInHierarchy)
+                if (source.Pose != null && source.Pose.gameObject.activeInHierarchy)
                 {
-                    target.SetPositionAndRotation(source.position, source.rotation);
+                    target.SetPositionAndRotation(source.Pose.position, source.Pose.rotation * source.Offset);
                     return;
                 }
             }
         }
 
-        static Transform[] FindAll(Transform root, string[] names)
+        // A tracked hand is followed by its palm joint (the hand object itself never moves, and each of its hand
+        // visuals has a palm, so any active one will do); a controller by its grip, with the glove rolled so its
+        // palm faces in around the handle.
+        static HandSource[] FindHand(Transform root, string side, string jointPrefix, float controllerRoll)
         {
-            var found = new Transform[names.Length];
+            var sources = new List<HandSource>();
             foreach (var child in root.GetComponentsInChildren<Transform>(true))
             {
-                var index = System.Array.IndexOf(names, child.name);
-                if (index >= 0 && found[index] == null)
-                    found[index] = child;
+                if (child.name == side + " Hand")
+                {
+                    foreach (var joint in child.GetComponentsInChildren<Transform>(true))
+                    {
+                        if (joint.name == jointPrefix + "_Palm")
+                            sources.Add(new HandSource { Pose = joint, Offset = Quaternion.identity });
+                    }
+                }
+                else if (child.name == side + " Controller")
+                {
+                    sources.Add(new HandSource { Pose = child, Offset = Quaternion.Euler(0f, 0f, controllerRoll) });
+                }
             }
-            return found;
+            return sources.ToArray();
         }
     }
 }
