@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Projector.Audio;
 using Projector.Networking;
 using Unity.Collections;
 using Unity.Netcode;
@@ -137,12 +138,18 @@ namespace Projector.Gameplay
             if (banner != null)
             {
                 var racing = game.Phase.Value == GamePhase.Racing;
-                if (!racing || startTime.Value < 0 || over.Value)
-                    banner.text = "";
-                else if (Now < startTime.Value)
-                    banner.text = Mathf.CeilToInt((float)(startTime.Value - Now)).ToString();
-                else
-                    banner.text = Elapsed < 1f ? "GO!" : "";
+                var text = !racing || startTime.Value < 0 || over.Value ? ""
+                    : Now < startTime.Value ? Mathf.CeilToInt((float)(startTime.Value - Now)).ToString()
+                    : Elapsed < 1f ? "GO!" : "";
+                // A beep as each number of the countdown appears, and a ding for GO.
+                if (text != banner.text && text != "")
+                {
+                    if (text == "GO!")
+                        GameAudio.Go();
+                    else
+                        GameAudio.CountdownBeep();
+                }
+                banner.text = text;
             }
 
             if (IsServer && IsRunning && (Elapsed >= timeLimitSeconds || EveryoneFinished()))
