@@ -86,25 +86,6 @@ namespace Projector.Editor
             return spots;
         }
 
-        // During the race everyone stands back beside the projector, side by side, facing the screen, within a
-        // controller ray's reach of the rope.
-        private static Object[] CreateViewingSpots(Transform parent, ProjectionCapture capture)
-        {
-            var screenCenter = new Vector3(capture.WallX, capture.Screen.center.y, capture.Screen.center.x);
-            var spots = new Object[PlayerColors.All.Length];
-            for (int i = 0; i < spots.Length; i++)
-            {
-                var spot = new GameObject($"Viewing Spot {i + 1}").transform;
-                spot.SetParent(parent);
-                spot.position = new Vector3(5f, 0f, -3.6f + i * 0.6f);
-                var toScreen = screenCenter - spot.position;
-                toScreen.y = 0f;
-                spot.rotation = Quaternion.LookRotation(toScreen);
-                spots[i] = spot;
-            }
-            return spots;
-        }
-
         // The projector's light: it lights props hanging in the beam but fades out before the wall,
         // so the projected image (not shadows) is what shows there.
         private static ProjectionCapture CreateProjector(Transform parent)
@@ -399,7 +380,6 @@ namespace Projector.Editor
                 AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Resources/NetworkPrefabs/ItemMocks/Buzzsaw.prefab"),
                 AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Resources/NetworkPrefabs/ItemMocks/Coin.prefab")
             });
-            SetReferences(game, "viewingSpots", CreateViewingSpots(root.transform, capture));
             var projectorButton = GameObject.Find("Control Button 1");
             if (projectorButton != null)
                 SetReference(game, "projectorButton", projectorButton.GetComponent<XRSimpleInteractable>());

@@ -1,3 +1,4 @@
+using Projector.Audio;
 using UnityEngine;
 
 namespace Projector.Gameplay
@@ -32,6 +33,7 @@ namespace Projector.Gameplay
             if (Closing || drapes == null || drapes.Length == 0)
                 return;
             Closing = true;
+            GameAudio.CurtainWhoosh();
 
             var open = drapes[0].sharedMesh;
             var mesh = Instantiate(open);
