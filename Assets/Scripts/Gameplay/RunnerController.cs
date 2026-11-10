@@ -1,3 +1,4 @@
+using Projector.Audio;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -119,6 +120,7 @@ namespace Projector.Gameplay
                 return;
 
             coin.Collect();
+            GameAudio.Coin();
             if (RaceManager.Current != null)
                 RaceManager.Current.ReportCoinRpc();
         }

@@ -3,6 +3,7 @@ using System.Linq;
 using Projector.Networking;
 using Unity.Netcode;
 using Unity.Netcode.Components;
+using Unity.XR.CoreUtils;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -501,6 +502,9 @@ namespace Projector.Editor
             Undo.RegisterCreatedObjectUndo(rig, "Create " + name);
             rig.name = name;
             rig.transform.SetPositionAndRotation(position, rotation);
+            // Track from the real floor so everyone stands at their own height (the prefab's default leaves it to
+            // the headset, and the Quest then puts every player's eyes at the same fixed 1.36 m).
+            rig.GetComponent<XROrigin>().RequestedTrackingOriginMode = XROrigin.TrackingOriginMode.Floor;
 
             Camera camera = rig.GetComponentInChildren<Camera>(true);
             if (camera != null)
