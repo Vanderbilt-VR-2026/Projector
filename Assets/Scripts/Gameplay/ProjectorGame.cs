@@ -632,9 +632,8 @@ namespace Projector.Gameplay
                 if (usable)
                     props.Add(prop);
             }
-            if (props.Count == 0 && !evenIfEmpty)
-                return false;
-
+            // All players have confirmed, so proceed even if every new item was discarded.
+            // Refusing an empty projection here would leave everyone ready with no way to continue.
             foreach (var prop in props)
                 prop.GetComponent<NetworkProp>().CommitPlacement();
             ClearGeneratedItems(preserveCommitted: true);
