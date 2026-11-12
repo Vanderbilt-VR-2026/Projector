@@ -14,7 +14,8 @@ namespace Projector.Gameplay
     {
         [Tooltip("The part that moves: the rope and its tassel.")]
         [SerializeField] Transform rope;
-        [SerializeField] float pullDistance = 0.15f;
+        [Tooltip("Downward hand travel in metres required for one pull.")]
+        [SerializeField, Min(0.01f)] float pullDistance = 0.10f;
         [SerializeField] float maxDrop = 0.3f;
 
         public event Action Pulled;
@@ -47,13 +48,25 @@ namespace Projector.Gameplay
             fired = false;
         }
 
-        void OnRelease(SelectExitEventArgs args) => hand = null;
+        void OnRelease(SelectExitEventArgs args)
+        {
+            // A quick pull can reach the threshold and release between Update calls.
+            if (!args.isCanceled)
+                CheckPull();
+            hand = null;
+        }
 
         void Update()
         {
             var pulled = hand != null ? grabY - hand.position.y : 0f;
             drop = Mathf.MoveTowards(drop, Mathf.Clamp(pulled, 0f, maxDrop), (hand != null ? 4f : 1.5f) * Time.deltaTime);
             rope.localPosition = rest + Vector3.down * drop;
+            CheckPull();
+        }
+
+        void CheckPull()
+        {
+            var pulled = hand != null ? grabY - hand.position.y : 0f;
             if (hand != null && !fired && pulled >= pullDistance)
             {
                 fired = true;
