@@ -393,7 +393,6 @@ namespace Projector.Gameplay
             if (!IsServer)
                 return;
 
-            ClearGeneratedItems();
             if (itemPrefabs == null || itemPrefabs.Length == 0)
             {
                 Debug.LogError("No item mock prefabs are assigned to ProjectorGame.itemPrefabs.", this);
@@ -461,13 +460,14 @@ namespace Projector.Gameplay
                         continue;
                     }
                     generatedItems.Add(item);
+                    networkObject.DontDestroyWithOwner = true;
                     networkObject.SpawnWithOwnership(clientIds[i], true);
                 }
             }
             Debug.Log($"Generated {generatedItems.Count} item(s) for {playerCount} player(s).", this);
         }
 
-        void ClearGeneratedItems()
+        void ClearGeneratedItems(bool preserveCommitted = false)
         {
             if (!IsServer)
             {
@@ -478,14 +478,19 @@ namespace Projector.Gameplay
             for (var i = generatedItems.Count - 1; i >= 0; i--)
             {
                 if (generatedItems[i] == null)
+                {
+                    generatedItems.RemoveAt(i);
+                    continue;
+                }
+                if (preserveCommitted && generatedItems[i].TryGetComponent<NetworkProp>(out var prop) && prop.Committed.Value)
                     continue;
                 var networkObject = generatedItems[i].GetComponent<NetworkObject>();
                 if (networkObject != null && networkObject.IsSpawned)
                     networkObject.Despawn(true);
                 else
                     Destroy(generatedItems[i]);
+                generatedItems.RemoveAt(i);
             }
-            generatedItems.Clear();
         }
 
         // Host: freeze the current projection as the level, send it to everyone, start the race. A button press
@@ -498,10 +503,34 @@ namespace Projector.Gameplay
 
             var props = new List<Transform>();
             foreach (var prop in capture.PropsInBeam())
-                if (prop.TryGetComponent(out NetworkObject networkObject) && networkObject.IsSpawned)
+            {
+                if (!prop.TryGetComponent<NetworkProp>(out var networkProp) || !networkProp.IsSpawned)
+                    continue;
+                if (networkProp.Committed.Value)
+                {
                     props.Add(prop);
-            if (capture.Capture(props, null, false).Count == 0 && !evenIfEmpty)
+                    continue;
+                }
+                // Partially visible items are discarded, even if clipping could produce a collider.
+                if (!capture.IsFullyInBeam(prop))
+                    continue;
+                var projected = capture.Capture(new[] { prop }, null, true);
+                if (projected.Count == 0 || networkProp.OverlapsAnotherProp())
+                    continue;
+                var item = projected[0];
+                var usable = item.Kind == ShapeKind.Coin
+                    ? item.Center.x >= capture.LevelMin.x && item.Center.x <= capture.LevelMax.x &&
+                      item.Center.y >= capture.LevelMin.y && item.Center.y <= capture.LevelMax.y
+                    : item.Parts.Count > 0;
+                if (usable)
+                    props.Add(prop);
+            }
+            if (props.Count == 0 && !evenIfEmpty)
                 return false;
+
+            foreach (var prop in props)
+                prop.GetComponent<NetworkProp>().CommitPlacement();
+            ClearGeneratedItems(preserveCommitted: true);
 
             var ids = new ulong[props.Count];
             var positions = new Vector3[props.Count];
