@@ -56,6 +56,8 @@ namespace Projector.Gameplay
         // Table positions (x from the player's spot, z on the table) for a player's items, in order.
         static readonly Vector2[] ItemOffsets = { new Vector2(-0.2f, 0.15f), new Vector2(0.2f, 0.15f), new Vector2(0f, 0.45f) };
         readonly List<GameObject> generatedItems = new List<GameObject>();
+        // Spawn history, not the number still alive: discarding an item doesn't erase its history.
+        readonly Dictionary<GameObject, int> gameSpawnCounts = new Dictionary<GameObject, int>();
         int itemSeed;
         int roundNumber;
 
@@ -82,6 +84,7 @@ namespace Projector.Gameplay
         public override void OnNetworkSpawn()
         {
             roundNumber = 0;
+            gameSpawnCounts.Clear();
             buildStarted = false;
             Current = this;
             Phase.OnValueChanged += OnPhaseChanged;
@@ -404,10 +407,11 @@ namespace Projector.Gameplay
             var isStarterRound = roundNumber <= Mathf.Clamp(starterRounds, 1, 2);
             var itemsPerPlayer = isStarterRound ? 2 : 1;
             var order = new List<int>(itemPrefabs.Length);
+            var seenPrefabs = new HashSet<GameObject>();
             for (var i = 0; i < itemPrefabs.Length; i++)
             {
                 var prefab = itemPrefabs[i];
-                if (prefab == null)
+                if (prefab == null || !seenPrefabs.Add(prefab))
                     continue;
                 if (!prefab.TryGetComponent<ItemMock>(out var item) || !prefab.TryGetComponent<NetworkObject>(out _))
                 {
@@ -426,22 +430,38 @@ namespace Projector.Gameplay
             }
 
             var random = new System.Random(itemSeed);
-            for (var i = order.Count - 1; i > 0; i--)
-            {
-                var swap = random.Next(i + 1);
-                (order[i], order[swap]) = (order[swap], order[i]);
-            }
+            var roundSpawnCounts = new Dictionary<GameObject, int>();
+            var weights = new double[order.Count];
 
-            // Cycle a shuffled eligible pool so items are distinct while the pool is large enough.
-            // Opening rounds give two items; subsequent rounds give one from the expanded pool.
-            var itemIndex = 0;
+            // Reweight after every successful spawn, across all players. Duplicates remain possible.
+            var spawnedThisRound = 0;
             for (var i = 0; i < playerCount; i++)
             {
                 var spotX = (PlayerRoster.SlotFor(clientIds[i]) - 1.5f) * 0.8f;
-                for (var k = 0; k < itemsPerPlayer; k++, itemIndex++)
+                for (var k = 0; k < itemsPerPlayer; k++)
                 {
                     var offset = itemsPerPlayer == 1 ? new Vector2(0f, 0.15f) : ItemOffsets[k];
-                    var prefabIndex = order[itemIndex % order.Count];
+                    var totalWeight = 0d;
+                    for (var candidate = 0; candidate < order.Count; candidate++)
+                    {
+                        var candidatePrefab = itemPrefabs[order[candidate]];
+                        roundSpawnCounts.TryGetValue(candidatePrefab, out var roundCount);
+                        gameSpawnCounts.TryGetValue(candidatePrefab, out var gameCount);
+                        weights[candidate] = SpawnWeight(roundCount, gameCount);
+                        totalWeight += weights[candidate];
+                    }
+                    var roll = random.NextDouble() * totalWeight;
+                    var selected = order.Count - 1;
+                    for (var candidate = 0; candidate < order.Count; candidate++)
+                    {
+                        roll -= weights[candidate];
+                        if (roll < 0d)
+                        {
+                            selected = candidate;
+                            break;
+                        }
+                    }
+                    var prefabIndex = order[selected];
                     var prefab = itemPrefabs[prefabIndex];
                     var item = prefab != null
                         ? Instantiate(prefab, new Vector3(spotX + offset.x, TableTop, offset.y), Quaternion.identity)
@@ -462,10 +482,20 @@ namespace Projector.Gameplay
                     generatedItems.Add(item);
                     networkObject.DontDestroyWithOwner = true;
                     networkObject.SpawnWithOwnership(clientIds[i], true);
+                    roundSpawnCounts.TryGetValue(prefab, out var roundSpawns);
+                    gameSpawnCounts.TryGetValue(prefab, out var gameSpawns);
+                    roundSpawnCounts[prefab] = roundSpawns + 1;
+                    gameSpawnCounts[prefab] = gameSpawns + 1;
+                    spawnedThisRound++;
                 }
             }
-            Debug.Log($"Generated {generatedItems.Count} item(s) for {playerCount} player(s).", this);
+            Debug.Log($"Generated {spawnedThisRound} item(s) for {playerCount} player(s).", this);
         }
+
+        // One previous spawn this round reduces weight 101-fold; one in the game reduces it fourfold.
+        // Rational decay stays positive even in long games, unlike exponential weights that can underflow.
+        static double SpawnWeight(int roundCount, int gameCount)
+            => 1d / ((1d + 100d * roundCount * roundCount) * (1d + 3d * gameCount));
 
         void ClearGeneratedItems(bool preserveCommitted = false)
         {
