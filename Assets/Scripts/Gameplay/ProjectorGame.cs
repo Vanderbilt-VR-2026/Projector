@@ -26,7 +26,8 @@ namespace Projector.Gameplay
     //   Results  - the scoreboard is projected; the host pulls the rope to play again (back to Building), and
     //              everyone else pulls it to leave.
     // The host can also pull the rope at any point in a race to end it and go straight to results. In any phase,
-    // pulling twice in quick succession leaves: the curtains close and the player is taken back to the lobby.
+    // pulling twice in quick succession within the same phase leaves: the curtains close and the player
+    // is taken back to the lobby. A phase change starts a fresh pull sequence.
     // What a pull does right now is written in the square of light beside the rope.
     public class ProjectorGame : NetworkBehaviour
     {
@@ -320,7 +321,7 @@ namespace Projector.Gameplay
 
         void OnRopePulled()
         {
-            // Two pulls in quick succession leave, whatever is on the screen.
+            // Only pulls within the same phase contribute to the leave gesture.
             if (Time.time - lastPullAt < SecondPullSeconds)
             {
                 playAgainAt = -1f;
@@ -693,6 +694,7 @@ namespace Projector.Gameplay
             var results = phase == GamePhase.Results;
 
             playAgainAt = -1f;
+            lastPullAt = float.NegativeInfinity;
             if (building)
                 platforms.ClearLevel();
             platforms.SetPreviewVisible(building);
