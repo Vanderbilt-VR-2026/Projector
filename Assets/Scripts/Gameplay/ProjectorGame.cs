@@ -270,7 +270,8 @@ namespace Projector.Gameplay
                 {
                     buildHud.worldCamera = camera;
                     buildHud.transform.SetParent(camera.transform, false);
-                    buildHud.transform.localPosition = new Vector3(0f, -0.3f, 1f);
+                    // Keep confirmation in the upper view, clear of the central item-placement area.
+                    buildHud.transform.localPosition = new Vector3(0f, 0.6f, 1f);
                     buildHud.transform.localRotation = Quaternion.identity;
                 }
             }
