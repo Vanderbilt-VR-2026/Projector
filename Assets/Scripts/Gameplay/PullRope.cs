@@ -41,6 +41,17 @@ namespace Projector.Gameplay
             interactable.selectExited.RemoveListener(OnRelease);
         }
 
+        public void SetInteractionAllowed(bool allowed)
+        {
+            if (!allowed)
+            {
+                // Cancel a held gesture before XR sends the selection-exit event.
+                hand = null;
+                fired = true;
+            }
+            interactable.enabled = allowed;
+        }
+
         void OnGrab(SelectEnterEventArgs args)
         {
             hand = args.interactorObject.transform;
