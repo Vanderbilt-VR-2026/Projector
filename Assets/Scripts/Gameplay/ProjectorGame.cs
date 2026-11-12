@@ -2,6 +2,7 @@ using System.Linq;
 using System.Collections.Generic;
 using Projector.Audio;
 using Projector.Networking;
+using global::ProjectorGame.Items;
 using Unity.Netcode;
 using Unity.XR.CoreUtils;
 using UnityEngine;
@@ -49,13 +50,14 @@ namespace Projector.Gameplay
         // GameObject[], not Object[]: a prefab stored in an Object slot serializes as the prefab asset container,
         // which loads as a nameless non-GameObject, so nothing could be instantiated from it.
         [SerializeField] GameObject[] itemPrefabs;
-        [Tooltip("Items each player gets on the table at the start of every build phase.")]
-        [SerializeField, Min(1)] int itemsPerPlayer = 3;
+        [Tooltip("Opening rounds that give two Starter items per player. Later rounds give one Starter or Advanced item.")]
+        [SerializeField, Range(1, 2)] int starterRounds = 2;
 
         // Table positions (x from the player's spot, z on the table) for a player's items, in order.
         static readonly Vector2[] ItemOffsets = { new Vector2(-0.2f, 0.15f), new Vector2(0.2f, 0.15f), new Vector2(0f, 0.45f) };
         readonly List<GameObject> generatedItems = new List<GameObject>();
         int itemSeed;
+        int roundNumber;
 
         public static ProjectorGame Current { get; private set; }
 
@@ -79,6 +81,8 @@ namespace Projector.Gameplay
 
         public override void OnNetworkSpawn()
         {
+            roundNumber = 0;
+            buildStarted = false;
             Current = this;
             Phase.OnValueChanged += OnPhaseChanged;
             if (projectorButton != null)
@@ -373,10 +377,11 @@ namespace Projector.Gameplay
 
         void StartBuilding()
         {
+            roundNumber++;
             itemSeed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
             var playerCount = NetworkManager.ConnectedClientsIds.Count;
             buildEndTime.Value = Now + GameAudio.BuildPhaseSeconds(buildSeconds);
-            Debug.Log($"Starting building with {playerCount} connected player(s) and {itemPrefabs?.Length ?? 0} item prefab reference(s).", this);
+            Debug.Log($"Starting round {roundNumber} with {playerCount} connected player(s) and {itemPrefabs?.Length ?? 0} item prefab reference(s).", this);
             buildStarted = true;
             Phase.Value = GamePhase.Building;
             // Here rather than in Apply: Apply also runs the moment the room spawns, before joiners have loaded.
@@ -397,14 +402,27 @@ namespace Projector.Gameplay
 
             var clientIds = NetworkManager.ConnectedClientsIds.OrderBy(id => id).ToArray();
             var playerCount = clientIds.Length;
+            var isStarterRound = roundNumber <= Mathf.Clamp(starterRounds, 1, 2);
+            var itemsPerPlayer = isStarterRound ? 2 : 1;
             var order = new List<int>(itemPrefabs.Length);
             for (var i = 0; i < itemPrefabs.Length; i++)
-                if (itemPrefabs[i] != null)
+            {
+                var prefab = itemPrefabs[i];
+                if (prefab == null)
+                    continue;
+                if (!prefab.TryGetComponent<ItemMock>(out var item) || !prefab.TryGetComponent<NetworkObject>(out _))
+                {
+                    Debug.LogWarning($"Skipping item prefab '{prefab.name}': ItemMock and NetworkObject are required.", this);
+                    continue;
+                }
+                if (item.progression == ItemProgression.Starter ||
+                    (!isStarterRound && item.progression == ItemProgression.Advanced))
                     order.Add(i);
+            }
 
             if (order.Count == 0)
             {
-                Debug.LogError("ProjectorGame.itemPrefabs contains no valid GameObject references.", this);
+                Debug.LogError($"No eligible item prefabs for round {roundNumber}. Assign at least one Starter item with a NetworkObject.", this);
                 return;
             }
 
@@ -415,15 +433,15 @@ namespace Projector.Gameplay
                 (order[i], order[swap]) = (order[swap], order[i]);
             }
 
-            // Each player gets itemsPerPlayer different items, laid out in front of their own spot at the table
-            // (spots are 0.8 m apart): two side by side at the edge, the next one just behind.
+            // Cycle a shuffled eligible pool so items are distinct while the pool is large enough.
+            // Opening rounds give two items; subsequent rounds give one from the expanded pool.
             var itemIndex = 0;
             for (var i = 0; i < playerCount; i++)
             {
                 var spotX = (PlayerRoster.SlotFor(clientIds[i]) - 1.5f) * 0.8f;
                 for (var k = 0; k < itemsPerPlayer; k++, itemIndex++)
                 {
-                    var offset = ItemOffsets[k % ItemOffsets.Length];
+                    var offset = itemsPerPlayer == 1 ? new Vector2(0f, 0.15f) : ItemOffsets[k];
                     var prefabIndex = order[itemIndex % order.Count];
                     var prefab = itemPrefabs[prefabIndex];
                     var item = prefab != null
