@@ -393,6 +393,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProjectorGame.Items.ItemMock
   displayName: Block
   category: 0
+  progression: 0
   gameplayNote: 1x1 solid block. Stack it to build walls or steps.
   killHeight: -2
   maxDistanceFromHome: 15

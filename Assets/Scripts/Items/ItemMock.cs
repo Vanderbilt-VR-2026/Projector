@@ -4,6 +4,12 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 namespace ProjectorGame.Items
 {
+    public enum ItemProgression
+    {
+        Starter = 0,
+        Advanced = 1,
+    }
+
     public enum ItemCategory
     {
         Platform,
@@ -24,6 +30,9 @@ namespace ProjectorGame.Items
         public string displayName = "Item";
 
         public ItemCategory category = ItemCategory.Platform;
+
+        [Tooltip("Starter items spawn from round 1. Advanced items unlock after the starter rounds.")]
+        public ItemProgression progression = ItemProgression.Starter;
 
         [TextArea]
         public string gameplayNote = "";
