@@ -624,6 +624,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProjectorGame.Items.ItemMock
   displayName: Spike Strip
   category: 2
+  progression: 1
   gameplayNote: Touching the spikes sends you back to the start.
   killHeight: -2
   maxDistanceFromHome: 15

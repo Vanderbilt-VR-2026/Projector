@@ -394,6 +394,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProjectorGame.Items.ItemMock
   displayName: Coin
   category: 3
+  progression: 1
   gameplayNote: Collect for bonus points.
   killHeight: -2
   maxDistanceFromHome: 15

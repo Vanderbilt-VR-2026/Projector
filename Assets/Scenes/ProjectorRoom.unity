@@ -2179,7 +2179,7 @@ MonoBehaviour:
   - {fileID: 7637691517151267652, guid: 23dda1d0b0f344c9283ea8ad744ca50f, type: 3}
   - {fileID: 7950941678173501192, guid: 4db32b63a49df4bc181e3768af82577f, type: 3}
   - {fileID: 529438161947779684, guid: 0a65085576b0c4960bd94d616ebc56a0, type: 3}
-  itemsPerPlayer: 3
+  starterRounds: 2
 --- !u!1 &599736119
 GameObject:
   m_ObjectHideFlags: 0

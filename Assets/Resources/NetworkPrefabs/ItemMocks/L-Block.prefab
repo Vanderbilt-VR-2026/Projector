@@ -506,6 +506,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProjectorGame.Items.ItemMock
   displayName: L-Block
   category: 0
+  progression: 0
   gameplayNote: L-shaped platform with a ledge to hang off.
   killHeight: -2
   maxDistanceFromHome: 15

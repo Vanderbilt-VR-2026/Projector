@@ -87,6 +87,33 @@ namespace Projector.Gameplay
         // The live drawing of the props in the beam (no colliders).
         public List<ProjectedItem> Capture() => Capture(PropsInBeam(), null, false);
 
+        // Validate original geometry before projection clips collider outlines to the screen.
+        public bool IsFullyInBeam(Transform prop)
+        {
+            var lens = transform.position;
+            var hasVertices = false;
+            prop.GetComponentsInChildren(filters);
+            foreach (var filter in filters)
+            {
+                if (filter.sharedMesh == null || IsHighlight(filter.transform, prop) ||
+                    !filter.TryGetComponent<MeshRenderer>(out var renderer) || !renderer.enabled)
+                    continue;
+                filter.sharedMesh.GetVertices(meshVertices);
+                foreach (var vertex in meshVertices)
+                {
+                    hasVertices = true;
+                    var point = filter.transform.TransformPoint(vertex);
+                    if (lens.x - point.x <= MinDepth || point.x <= wallX)
+                        return false;
+                    var hit = lens + (point - lens) * ((wallX - lens.x) / (point.x - lens.x));
+                    if (hit.z < screen.xMin || hit.z > screen.xMax ||
+                        hit.y < screen.yMin || hit.y > screen.yMax)
+                        return false;
+                }
+            }
+            return hasVertices;
+        }
+
         // Draws the given props, at the given root poses if any (the host's view of them when the level is built),
         // and with each part's collider outline if asked. The items returned are reused by the next capture.
         public List<ProjectedItem> Capture(IReadOnlyList<Transform> targets, IReadOnlyList<Pose> poses, bool withParts)
