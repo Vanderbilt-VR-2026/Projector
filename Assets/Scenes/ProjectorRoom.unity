@@ -2155,14 +2155,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projector.Gameplay.ProjectorGame
   ShowTopMostFoldoutHeaderGroup: 1
-  buildSeconds: 90
   capture: {fileID: 700666529}
   platforms: {fileID: 1522516945}
   race: {fileID: 599042258}
   scoreboard: {fileID: 1454215724}
   hudText: {fileID: 1510034802}
   rope: {fileID: 1015810342}
-  projectorButton: {fileID: 833427863}
   viewingSpots:
   - {fileID: 465904077}
   - {fileID: 1109460682}
@@ -6207,7 +6205,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: Pull to start
+  m_Text: Confirm in your HUD when done
 --- !u!222 &1510034803
 CanvasRenderer:
   m_ObjectHideFlags: 0
