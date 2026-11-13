@@ -8,8 +8,8 @@ namespace Projector.Gameplay
     {
         static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
-        [Tooltip("Upward speed given to a runner landing on the pad (a normal jump is 8.5).")]
-        [SerializeField] float launchSpeed = 15f;
+        [Tooltip("Upward speed given to a runner landing on the pad (a normal jump is 7): 10 reaches about 5 units, twice a jump.")]
+        [SerializeField] float launchSpeed = 10f;
         [Tooltip("Tint on the drawing's colors during a flash (above 1 brightens).")]
         [SerializeField] Color flashColor = new Color(1.6f, 1.5f, 0.8f);
         [SerializeField] float flashSeconds = 0.25f;
