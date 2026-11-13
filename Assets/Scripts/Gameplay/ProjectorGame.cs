@@ -25,8 +25,9 @@ namespace Projector.Gameplay
     //              races on the wall.
     //   Results  - the scoreboard is projected; the host pulls the rope to play again (back to Building), and
     //              everyone else pulls it to leave.
-    // The host can also pull the rope at any point in a race to end it and go straight to results. In any phase,
-    // pulling twice in quick succession leaves: the curtains close and the player is taken back to the lobby.
+    // Once the countdown finishes, the host can pull to end the race after the second-pull window. In any phase,
+    // pulling twice in quick succession within the same phase leaves: the curtains close and the player
+    // is taken back to the lobby. A phase change starts a fresh pull sequence.
     // What a pull does right now is written in the square of light beside the rope.
     public class ProjectorGame : NetworkBehaviour
     {
@@ -76,6 +77,7 @@ namespace Projector.Gameplay
         float nextPreview;
         // Host, in results: after one pull, play again when this time passes unless a second pull leaves first.
         float playAgainAt = -1f;
+        float endRaceAt = -1f;
         float lastPullAt = float.NegativeInfinity;
         bool isLocallyPaused;
         Canvas pauseOverlay;
@@ -320,10 +322,14 @@ namespace Projector.Gameplay
 
         void OnRopePulled()
         {
-            // Two pulls in quick succession leave, whatever is on the screen.
+            if (!RopeInputAllowed)
+                return;
+
+            // Only pulls within the same phase contribute to the leave gesture.
             if (Time.time - lastPullAt < SecondPullSeconds)
             {
                 playAgainAt = -1f;
+                endRaceAt = -1f;
                 Leave();
                 return;
             }
@@ -334,7 +340,8 @@ namespace Projector.Gameplay
                 case GamePhase.Building:
                     break;
                 case GamePhase.Racing:
-                    EndRace();
+                    if (IsServer)
+                        endRaceAt = Time.time + SecondPullSeconds;
                     break;
                 case GamePhase.Results:
                     if (!IsServer)
@@ -368,8 +375,18 @@ namespace Projector.Gameplay
 
         public void Leave() => GameScenes.ReturnToLanding();
 
+        bool RopeInputAllowed => IsSpawned && !isLocallyPaused
+            && (Phase.Value != GamePhase.Racing || (race != null && race.IsSpawned && race.IsRunning));
+
+        void UpdateRopeInteraction()
+        {
+            if (rope != null)
+                rope.SetInteractionAllowed(RopeInputAllowed);
+        }
+
         void Update()
         {
+            UpdateRopeInteraction();
             if (!IsSpawned)
                 return;
 
@@ -392,7 +409,14 @@ namespace Projector.Gameplay
                     break;
                 case GamePhase.Racing:
                     hudText.text = isLocallyPaused ? "PAUSED\nPut your headset on"
+                        : !RopeInputAllowed ? "Get ready...\nRope disabled until race starts"
+                        : endRaceAt >= 0f ? "Ending race...\nPull again to leave\n" + race.ClockText()
                         : (IsServer ? "Pull to end race\n" : "") + LeaveHint + "\n" + race.ClockText();
+                    if (IsServer && RopeInputAllowed && endRaceAt >= 0f && Time.time >= endRaceAt)
+                    {
+                        endRaceAt = -1f;
+                        EndRace();
+                    }
                     break;
                 case GamePhase.Results:
                     if (isLocallyPaused)
@@ -693,6 +717,9 @@ namespace Projector.Gameplay
             var results = phase == GamePhase.Results;
 
             playAgainAt = -1f;
+            endRaceAt = -1f;
+            lastPullAt = float.NegativeInfinity;
+            UpdateRopeInteraction();
             if (building)
                 platforms.ClearLevel();
             platforms.SetPreviewVisible(building);
