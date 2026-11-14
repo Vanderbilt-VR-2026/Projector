@@ -14,7 +14,7 @@ namespace Projector.Editor
     // Adds the whole game to the projector room (QuestRoomSceneBuilder's theater) without rebuilding the room.
     // The projector films an off-screen 2D "stage" with an orthographic camera and shows it on the screen on the
     // front wall through the projection shader; props in the beam are drawn on that stage as 2D shapes, and the
-    // race runs there too. A rope hanging beside the screen starts and ends rounds, with what it does written in a
+    // race runs there too. A rope hanging beside the screen ends races and restarts rounds, with what it does written in a
     // square of light on the wall. Re-running replaces the previous "Gameplay" objects.
     public static class ProjectorRoomGameplayBuilder
     {
@@ -209,6 +209,7 @@ namespace Projector.Editor
             platforms = stage.gameObject.AddComponent<ProjectedPlatforms>();
             SetReference(platforms, "shapeMaterial", shapes);
             SetReference(platforms, "coinMaterial", shapes);
+            SetReference(platforms, "drawingMaterial", CreateDrawingMaterial());
 
             // Written on the platforms themselves, clear of the runners' name tags.
             // In the theater's Limelight lettering, like the posters.
@@ -249,6 +250,23 @@ namespace Projector.Editor
             SetBool(scoreboard, "showMockOnStart", false);
             results.gameObject.SetActive(false);
             return stage;
+        }
+
+        // The props' drawings carry their colors in the mesh (see ProjectionCapture).
+        public static Material CreateDrawingMaterial()
+        {
+            EnsureFolder(ProjectionFolder);
+            const string path = ProjectionFolder + "/StageDrawing.mat";
+            var shader = Shader.Find("Projector/Stage Drawing");
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(shader) { name = "StageDrawing" };
+                AssetDatabase.CreateAsset(material, path);
+            }
+            material.shader = shader;
+            EditorUtility.SetDirty(material);
+            return material;
         }
 
         private static Text CreateStageLabel(Transform stage, string text, Vector2 position, float scale = 0.008f, string name = null, Color? color = null)
@@ -319,6 +337,8 @@ namespace Projector.Editor
             material.SetFloat("_Ambient", 0f);
             material.SetFloat("_Scanlines", 0.04f);
             material.SetFloat("_GrainStrength", 0.45f);
+            // Muted like old film, but the props' own colors still read.
+            material.SetFloat("_Saturation", 0.85f);
             EditorUtility.SetDirty(material);
 
             Rect screen = capture.Screen;
@@ -380,9 +400,6 @@ namespace Projector.Editor
                 AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Resources/NetworkPrefabs/ItemMocks/Coin.prefab")
             });
             SetReferences(game, "viewingSpots", CreateViewingSpots(root.transform, capture));
-            var projectorButton = GameObject.Find("Control Button 1");
-            if (projectorButton != null)
-                SetReference(game, "projectorButton", projectorButton.GetComponent<XRSimpleInteractable>());
 
             var runner = AssetDatabase.LoadAssetAtPath<NetworkObject>(NetworkPrefabsBuilder.RunnerPath);
             SetReference(race, "runnerPrefab", runner);
@@ -440,7 +457,7 @@ namespace Projector.Editor
             canvas.transform.localPosition = new Vector3(0f, 0f, -0.01f);
             canvas.transform.localRotation = Quaternion.identity;
             canvas.transform.localScale = Vector3.one * 0.0012f;
-            Text text = CreateText("Pull to start", canvas.transform, 130, Color.black, "Status");
+            Text text = CreateText("Confirm in your HUD when done", canvas.transform, 130, Color.black, "Status");
             text.horizontalOverflow = HorizontalWrapMode.Wrap;
             text.font = BodyFont;
             SetFullSize(text.rectTransform);

@@ -7,7 +7,7 @@ On first load, users will go through a series of landing pages.
 
 The game environment is a physical room. Users will select objects off a table, arranging them however they want before a white screen.
 
-Then, when time is up, the casted shadows of these objects will become physical objects in the 2D platformer game.
+Then, when every player confirms they are done building, the casted shadows of these objects will become physical objects in the 2D platformer game.
 
 Users will be loaded into this 2D environment to race, collecting points for various actions. At the end of the race, a winner will be selected and displayed. Then, they can return to the initial landing page(s).
 
@@ -25,8 +25,8 @@ Multiplayer uses Netcode for GameObjects with Unity Multiplayer Services (Lobby 
 
 In the projector room:
 
-1. **Build.** Grab an item off the table (grip), move it into the projector's beam, then hold it steady for 2 seconds to confirm and lock its placement. Small hand motion is tolerated. Items cannot overlap: an invalid item turns red and returns to its last clear pose if released, while a valid confirmation fills yellow. The projector shows a live, stylized 2D drawing of every placed item on the theater screen. You have 90 s, or pull the rope beside the screen (or press the projector's first button); the square of light by the rope says what a pull does.
-2. **Race.** The drawn shapes lock in as platforms with a coin over each, and everyone races on the screen: left thumbstick runs, A jumps. Points: 1000/750/500/250 by finish place, +100 per coin, -50 per fall. The host can pull the rope to end the race early.
+1. **Build.** Grab an item off the table (grip), move it into the projector's beam, then hold it steady for 2 seconds to confirm and lock its placement. Small hand motion is tolerated. Items cannot overlap: an invalid item turns red and returns to its last clear pose if released, while a valid confirmation fills yellow. The projector shows a live drawing of every placed item on the theater screen, as the lens sees it: the faces it can see, in the item's own colors and lit naturally. There is no build time limit. Select **Done building** in the headset HUD with an XR controller ray when finished. The HUD shows how many players have confirmed; the race starts only when every connected player confirms. Confirmations reset each round. The square of light by the rope remains available for instructions.
+2. **Race.** The drawings lock in as platforms, solid in their own shape (an L stays an L), with a coin over each, and everyone races on the screen: left thumbstick runs, A jumps. Points: 1000/750/500/250 by finish place, +100 per coin, -50 per fall. The host can pull the rope to end the race early.
 3. **Results** are projected on the screen. The host pulls the rope to play again (back to building, props where they were); everyone else pulls it to leave.
 
 At any point, pulling the rope twice in quick succession leaves: the curtains' ties drop, the curtains slide shut over the screen, and you're taken back to the lobby.

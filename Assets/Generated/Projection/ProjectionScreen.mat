@@ -42,7 +42,7 @@ Material:
     - _GrainScale: 4
     - _GrainStrength: 0.45
     - _Hotspot: 0.45
-    - _Saturation: 0.5
+    - _Saturation: 0.85
     - _Scanlines: 0.04
     - _Softness: 0.7
     - _Wash: 0

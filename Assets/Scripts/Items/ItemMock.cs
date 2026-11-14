@@ -4,6 +4,12 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 namespace ProjectorGame.Items
 {
+    public enum ItemProgression
+    {
+        Starter = 0,
+        Advanced = 1,
+    }
+
     public enum ItemCategory
     {
         Platform,
@@ -25,6 +31,9 @@ namespace ProjectorGame.Items
 
         public ItemCategory category = ItemCategory.Platform;
 
+        [Tooltip("Starter items spawn from round 1. Advanced items unlock after the starter rounds.")]
+        public ItemProgression progression = ItemProgression.Starter;
+
         [TextArea]
         public string gameplayNote = "";
 
@@ -36,6 +45,7 @@ namespace ProjectorGame.Items
 
         Rigidbody m_Body;
         XRGrabInteractable m_Grab;
+        Projector.Gameplay.NetworkProp m_NetworkProp;
         Vector3 m_HomePosition;
         Quaternion m_HomeRotation;
 
@@ -45,6 +55,7 @@ namespace ProjectorGame.Items
         {
             m_Body = GetComponent<Rigidbody>();
             m_Grab = GetComponent<XRGrabInteractable>();
+            m_NetworkProp = GetComponent<Projector.Gameplay.NetworkProp>();
             if (m_Grab != null)
             {
                 m_Grab.selectEntered.AddListener(OnGrabbed);
@@ -88,6 +99,8 @@ namespace ProjectorGame.Items
 
         void Update()
         {
+            if (m_NetworkProp != null && (m_NetworkProp.Committed.Value || !m_NetworkProp.IsOwner))
+                return;
             if (transform.position.y < killHeight || Vector3.Distance(transform.position, m_HomePosition) > maxDistanceFromHome)
                 ResetToHome();
         }
@@ -95,6 +108,8 @@ namespace ProjectorGame.Items
         /// <summary>Put the item back where it was placed in the scene.</summary>
         public void ResetToHome()
         {
+            if (m_NetworkProp != null && (m_NetworkProp.Committed.Value || !m_NetworkProp.IsOwner))
+                return;
             m_Body.linearVelocity = Vector3.zero;
             m_Body.angularVelocity = Vector3.zero;
             transform.SetPositionAndRotation(m_HomePosition, m_HomeRotation);

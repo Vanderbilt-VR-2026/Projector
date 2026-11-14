@@ -394,6 +394,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProjectorGame.Items.ItemMock
   displayName: Ramp
   category: 0
+  progression: 0
   gameplayNote: Slope. Its shadow becomes a walkable incline.
   killHeight: -2
   maxDistanceFromHome: 15

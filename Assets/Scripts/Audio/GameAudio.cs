@@ -178,12 +178,7 @@ namespace Projector.Audio
             instance.thunkSource.Play();
         }
 
-        // The build phase lasts as long as its song, so the race starts when the song ends.
-        public static float BuildPhaseSeconds(float fallback) =>
-            instance != null && instance.showYourself != null ? instance.showYourself.length : fallback;
-
-        // Starts a song (or silence) unless it is already the one playing. `startAt` is where in the song to begin,
-        // so a player who arrives partway through the build phase hears it in time with everyone else.
+        // Starts a song (or silence) unless it is already the one playing.
         public static void PlaySong(Song next, float startAt = 0f)
         {
             if (instance == null || next == instance.song)
@@ -196,10 +191,9 @@ namespace Projector.Audio
 
         IEnumerator FadeToSong(Song next, float startAt)
         {
-            var faded = 0f;
             if (music.isPlaying)
             {
-                for (var start = musicLevel; musicLevel > 0f; faded += Time.unscaledDeltaTime)
+                for (var start = musicLevel; musicLevel > 0f;)
                 {
                     musicLevel = Mathf.MoveTowards(musicLevel, 0f, start / FadeSeconds * Time.unscaledDeltaTime);
                     yield return null;
@@ -211,12 +205,11 @@ namespace Projector.Audio
             if (clip == null)
                 yield break;
             music.clip = clip;
-            music.loop = next != Song.BuildPhase;
+            music.loop = true;
             musicLevel = 0f;
             music.volume = 0f;
             musicLooped = false;
-            // The fade-out took time; skip ahead by it so the song still ends on cue.
-            var time = next == Song.BuildPhase ? startAt + faded : startAt;
+            var time = startAt;
             if (time >= clip.length)
                 yield break;
             music.time = time;

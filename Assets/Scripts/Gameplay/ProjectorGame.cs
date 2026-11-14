@@ -2,12 +2,12 @@ using System.Linq;
 using System.Collections.Generic;
 using Projector.Audio;
 using Projector.Networking;
+using global::ProjectorGame.Items;
 using Unity.Netcode;
 using Unity.XR.CoreUtils;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.XR.Interaction.Toolkit;
-using UnityEngine.XR.Interaction.Toolkit.Interactables;
+using UnityEngine.XR.Interaction.Toolkit.UI;
 using UnityEngine.XR.Interaction.Toolkit.Locomotion;
 
 namespace Projector.Gameplay
@@ -21,18 +21,18 @@ namespace Projector.Gameplay
 
     // The projector room's game loop, all in one room:
     //   Building - players hang props in the beam; the wall shows a live 2D projection of them.
-    //   Racing   - pulling the rope (or the projector button) locks the shapes in as platforms and everyone
+    //   Racing   - everyone confirming in their HUD locks the shapes in as platforms and everyone
     //              races on the wall.
     //   Results  - the scoreboard is projected; the host pulls the rope to play again (back to Building), and
     //              everyone else pulls it to leave.
-    // The host can also pull the rope at any point in a race to end it and go straight to results. In any phase,
-    // pulling twice in quick succession leaves: the curtains close and the player is taken back to the lobby.
+    // Once the countdown finishes, the host can pull to end the race after the second-pull window. In any phase,
+    // pulling twice in quick succession within the same phase leaves: the curtains close and the player
+    // is taken back to the lobby. A phase change starts a fresh pull sequence.
     // What a pull does right now is written in the square of light beside the rope.
     public class ProjectorGame : NetworkBehaviour
     {
         const float PreviewInterval = 0.1f;
 
-        [SerializeField] float buildSeconds = 90f;
         [SerializeField] ProjectionCapture capture;
         [SerializeField] ProjectedPlatforms platforms;
         [SerializeField] RaceManager race;
@@ -40,7 +40,6 @@ namespace Projector.Gameplay
         [Tooltip("The instructions in the square of light beside the rope.")]
         [SerializeField] Text hudText;
         [SerializeField] PullRope rope;
-        [SerializeField] XRBaseInteractable projectorButton;
         [Tooltip("Where each player slot stands to watch the wall during the race.")]
         [SerializeField] Transform[] viewingSpots;
 
@@ -49,40 +48,50 @@ namespace Projector.Gameplay
         // GameObject[], not Object[]: a prefab stored in an Object slot serializes as the prefab asset container,
         // which loads as a nameless non-GameObject, so nothing could be instantiated from it.
         [SerializeField] GameObject[] itemPrefabs;
-        [Tooltip("Items each player gets on the table at the start of every build phase.")]
-        [SerializeField, Min(1)] int itemsPerPlayer = 3;
+        [Tooltip("Opening rounds that give two Starter items per player. Later rounds give one Starter or Advanced item.")]
+        [SerializeField, Range(1, 2)] int starterRounds = 2;
 
         // Table positions (x from the player's spot, z on the table) for a player's items, in order.
         static readonly Vector2[] ItemOffsets = { new Vector2(-0.2f, 0.15f), new Vector2(0.2f, 0.15f), new Vector2(0f, 0.45f) };
         readonly List<GameObject> generatedItems = new List<GameObject>();
+        // Spawn history, not the number still alive: discarding an item doesn't erase its history.
+        readonly Dictionary<GameObject, int> gameSpawnCounts = new Dictionary<GameObject, int>();
         int itemSeed;
+        int roundNumber;
 
         public static ProjectorGame Current { get; private set; }
 
         public readonly NetworkVariable<GamePhase> Phase = new NetworkVariable<GamePhase>();
-        readonly NetworkVariable<double> buildEndTime = new NetworkVariable<double>();
+        readonly NetworkVariable<bool> buildAvailable = new NetworkVariable<bool>();
+        readonly NetworkVariable<int> builderCount = new NetworkVariable<int>();
+        NetworkList<ulong> readyPlayers;
+        Canvas buildHud;
+        Text buildHudText;
+        Text confirmLabel;
+        Button confirmButton;
+
+        void Awake() => readyPlayers = new NetworkList<ulong>();
         const float SecondPullSeconds = 2.5f;
         const string LeaveHint = "Pull twice to leave";
 
         float nextPreview;
-        float noticeUntil;
         // Host, in results: after one pull, play again when this time passes unless a second pull leaves first.
         float playAgainAt = -1f;
+        float endRaceAt = -1f;
         float lastPullAt = float.NegativeInfinity;
-        string notice;
         bool isLocallyPaused;
         Canvas pauseOverlay;
         Text pauseOverlayText;
 
-        double Now => NetworkManager.ServerTime.Time;
         public bool IsLocallyPaused => isLocallyPaused;
 
         public override void OnNetworkSpawn()
         {
+            roundNumber = 0;
+            gameSpawnCounts.Clear();
+            buildStarted = false;
             Current = this;
             Phase.OnValueChanged += OnPhaseChanged;
-            if (projectorButton != null)
-                projectorButton.selectEntered.AddListener(OnProjectorButton);
             if (rope != null)
                 rope.Pulled += OnRopePulled;
             HideStaticProps();
@@ -99,6 +108,7 @@ namespace Projector.Gameplay
                     StartBuilding();
             }
             CreatePauseOverlay();
+            CreateBuildHud();
             Apply(Phase.Value);
         }
 
@@ -133,8 +143,8 @@ namespace Projector.Gameplay
             ClearGeneratedItems();
             if (pauseOverlay != null)
                 Destroy(pauseOverlay.gameObject);
-            if (projectorButton != null)
-                projectorButton.selectEntered.RemoveListener(OnProjectorButton);
+            if (buildHud != null)
+                Destroy(buildHud.gameObject);
             if (rope != null)
                 rope.Pulled -= OnRopePulled;
             if (Current == this)
@@ -168,6 +178,7 @@ namespace Projector.Gameplay
             if (hudText != null && isLocallyPaused)
                 hudText.text = "PAUSED\nPut your headset on";
             UpdatePauseOverlay(isLocallyPaused);
+            UpdateBuildHud();
 
             var building = Phase.Value == GamePhase.Building;
             foreach (var prop in FindObjectsByType<NetworkProp>(FindObjectsSortMode.None))
@@ -205,6 +216,76 @@ namespace Projector.Gameplay
             overlayObject.SetActive(false);
         }
 
+        // A local, head-relative XR canvas: no collider, prop, or networked scene object is needed.
+        void CreateBuildHud()
+        {
+            var hudObject = new GameObject("Build Confirmation HUD");
+            buildHud = hudObject.AddComponent<Canvas>();
+            buildHud.renderMode = RenderMode.WorldSpace;
+            buildHud.sortingOrder = 10;
+            hudObject.AddComponent<TrackedDeviceGraphicRaycaster>();
+            hudObject.GetComponent<RectTransform>().sizeDelta = new Vector2(600f, 180f);
+            hudObject.transform.localScale = Vector3.one * 0.001f;
+
+            var panel = new GameObject("Panel").AddComponent<Image>();
+            panel.transform.SetParent(hudObject.transform, false);
+            panel.color = new Color(0.04f, 0.04f, 0.06f, 0.92f);
+            panel.raycastTarget = false;
+            SetFullScreen(panel.rectTransform);
+
+            buildHudText = CreateHudLabel("Ready Status", panel.transform);
+            SetFullScreen(buildHudText.rectTransform, new Vector2(0.03f, 0.55f), new Vector2(0.97f, 0.97f));
+
+            var buttonImage = new GameObject("Confirm Building").AddComponent<Image>();
+            buttonImage.transform.SetParent(panel.transform, false);
+            buttonImage.color = new Color(0.15f, 0.5f, 0.3f);
+            SetFullScreen(buttonImage.rectTransform, new Vector2(0.12f, 0.08f), new Vector2(0.88f, 0.52f));
+            confirmButton = buttonImage.gameObject.AddComponent<Button>();
+            confirmButton.targetGraphic = buttonImage;
+            confirmButton.onClick.AddListener(ConfirmBuilding);
+            confirmLabel = CreateHudLabel("Label", buttonImage.transform);
+            SetFullScreen(confirmLabel.rectTransform);
+            UpdateBuildHud();
+        }
+
+        static Text CreateHudLabel(string name, Transform parent)
+        {
+            var label = new GameObject(name).AddComponent<Text>();
+            label.transform.SetParent(parent, false);
+            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            label.fontSize = 28;
+            label.alignment = TextAnchor.MiddleCenter;
+            label.color = Color.white;
+            label.raycastTarget = false;
+            return label;
+        }
+
+        void UpdateBuildHud()
+        {
+            if (buildHud == null)
+                return;
+            if (buildHud.worldCamera == null)
+            {
+                var origin = FindFirstObjectByType<XROrigin>();
+                var camera = origin != null ? origin.Camera : Camera.main;
+                if (camera != null)
+                {
+                    buildHud.worldCamera = camera;
+                    buildHud.transform.SetParent(camera.transform, false);
+                    // Keep confirmation in the upper view, clear of the central item-placement area.
+                    buildHud.transform.localPosition = new Vector3(0f, 0.2f, 1f);
+                    buildHud.transform.localRotation = Quaternion.identity;
+                }
+            }
+            buildHud.gameObject.SetActive(Phase.Value == GamePhase.Building && !isLocallyPaused
+                && buildHud.worldCamera != null);
+            var ready = readyPlayers.Contains(NetworkManager.LocalClientId);
+            buildHudText.text = !buildAvailable.Value ? "Waiting for players..."
+                : $"{readyPlayers.Count}/{builderCount.Value} players ready";
+            confirmLabel.text = ready ? "Confirmed - waiting for others" : "Done building";
+            confirmButton.interactable = buildAvailable.Value && !ready && !isLocallyPaused;
+        }
+
         void UpdatePauseOverlay(bool paused)
         {
             if (pauseOverlay == null)
@@ -239,18 +320,16 @@ namespace Projector.Gameplay
             props.gameObject.SetActive(false);
         }
 
-        void OnProjectorButton(SelectEnterEventArgs args)
-        {
-            GameAudio.Click();
-            ProjectNow();
-        }
-
         void OnRopePulled()
         {
-            // Two pulls in quick succession leave, whatever is on the screen.
+            if (!RopeInputAllowed)
+                return;
+
+            // Only pulls within the same phase contribute to the leave gesture.
             if (Time.time - lastPullAt < SecondPullSeconds)
             {
                 playAgainAt = -1f;
+                endRaceAt = -1f;
                 Leave();
                 return;
             }
@@ -259,10 +338,10 @@ namespace Projector.Gameplay
             switch (Phase.Value)
             {
                 case GamePhase.Building:
-                    ProjectNow();
                     break;
                 case GamePhase.Racing:
-                    EndRace();
+                    if (IsServer)
+                        endRaceAt = Time.time + SecondPullSeconds;
                     break;
                 case GamePhase.Results:
                     if (!IsServer)
@@ -273,11 +352,13 @@ namespace Projector.Gameplay
             }
         }
 
-        // The rope and the projector's poke button.
-        public void ProjectNow()
+        public void ConfirmBuilding()
         {
-            if (IsSpawned)
-                RequestProjectRpc();
+            if (!IsSpawned || isLocallyPaused || Phase.Value != GamePhase.Building
+                || !buildAvailable.Value || readyPlayers.Contains(NetworkManager.LocalClientId))
+                return;
+            GameAudio.Click();
+            RequestConfirmBuildingRpc();
         }
 
         public void PlayAgain()
@@ -294,34 +375,48 @@ namespace Projector.Gameplay
 
         public void Leave() => GameScenes.ReturnToLanding();
 
+        bool RopeInputAllowed => IsSpawned && !isLocallyPaused
+            && (Phase.Value != GamePhase.Racing || (race != null && race.IsSpawned && race.IsRunning));
+
+        void UpdateRopeInteraction()
+        {
+            if (rope != null)
+                rope.SetInteractionAllowed(RopeInputAllowed);
+        }
+
         void Update()
         {
+            UpdateRopeInteraction();
             if (!IsSpawned)
                 return;
 
+            UpdateBuildHud();
             switch (Phase.Value)
             {
                 case GamePhase.Building:
-                    var remaining = Mathf.Max(0f, (float)(buildEndTime.Value - Now));
                     hudText.text = isLocallyPaused ? "PAUSED\nPut your headset on"
-                        : Time.time < noticeUntil ? notice
-                        : buildEndTime.Value <= 0 ? "Waiting for players...\n" + LeaveHint
-                        : $"Pull to start\n{LeaveHint}\n{(int)remaining / 60}:{(int)remaining % 60:00}";
-                    // The build phase lasts as long as its song (it is started where the timer says, for anyone
-                    // arriving late). Starting the race early fades it out.
-                    if (buildEndTime.Value > 0 && remaining > 0f)
-                        GameAudio.PlaySong(GameAudio.Song.BuildPhase, GameAudio.BuildPhaseSeconds(buildSeconds) - remaining);
+                        : !buildAvailable.Value ? "Waiting for players...\n" + LeaveHint
+                        : $"Confirm in your HUD when done\n{readyPlayers.Count}/{builderCount.Value} players ready\n{LeaveHint}";
+                    if (buildAvailable.Value)
+                        GameAudio.PlaySong(GameAudio.Song.BuildPhase);
                     if (Time.time >= nextPreview)
                     {
                         nextPreview = Time.time + PreviewInterval;
                         platforms.ShowPreview(capture.Capture());
                     }
-                    if (IsServer && buildEndTime.Value > 0 && remaining <= 0f)
-                        Project(evenIfEmpty: true);
+                    if (IsServer)
+                        CheckBuildConfirmations();
                     break;
                 case GamePhase.Racing:
                     hudText.text = isLocallyPaused ? "PAUSED\nPut your headset on"
+                        : !RopeInputAllowed ? "Get ready...\nRope disabled until race starts"
+                        : endRaceAt >= 0f ? "Ending race...\nPull again to leave\n" + race.ClockText()
                         : (IsServer ? "Pull to end race\n" : "") + LeaveHint + "\n" + race.ClockText();
+                    if (IsServer && RopeInputAllowed && endRaceAt >= 0f && Time.time >= endRaceAt)
+                    {
+                        endRaceAt = -1f;
+                        EndRace();
+                    }
                     break;
                 case GamePhase.Results:
                     if (isLocallyPaused)
@@ -342,17 +437,28 @@ namespace Projector.Gameplay
         }
 
         [Rpc(SendTo.Server)]
-        void RequestProjectRpc(RpcParams rpcParams = default)
+        void RequestConfirmBuildingRpc(RpcParams rpcParams = default)
         {
-            if (!Project(evenIfEmpty: false))
-                NoticeRpc("Hang something in the beam first!", RpcTarget.Single(rpcParams.Receive.SenderClientId, RpcTargetUse.Temp));
+            var sender = rpcParams.Receive.SenderClientId;
+            if (Phase.Value != GamePhase.Building || !buildAvailable.Value
+                || !NetworkManager.ConnectedClientsIds.Contains(sender) || readyPlayers.Contains(sender))
+                return;
+            readyPlayers.Add(sender);
         }
 
-        [Rpc(SendTo.SpecifiedInParams)]
-        void NoticeRpc(string message, RpcParams rpcParams = default)
+        // Evaluate once per server frame, including after joins/disconnects. A departed player must not
+        // block the remaining builders; a new player must confirm independently.
+        void CheckBuildConfirmations()
         {
-            notice = message;
-            noticeUntil = Time.time + 2.5f;
+            if (!buildAvailable.Value || Phase.Value != GamePhase.Building)
+                return;
+            var connected = NetworkManager.ConnectedClientsIds;
+            builderCount.Value = connected.Count;
+            for (var i = readyPlayers.Count - 1; i >= 0; i--)
+                if (!connected.Contains(readyPlayers[i]))
+                    readyPlayers.RemoveAt(i);
+            if (connected.Count > 0 && connected.All(id => readyPlayers.Contains(id)))
+                Project();
         }
 
         [Rpc(SendTo.Server)]
@@ -373,14 +479,18 @@ namespace Projector.Gameplay
 
         void StartBuilding()
         {
+            roundNumber++;
             itemSeed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
             var playerCount = NetworkManager.ConnectedClientsIds.Count;
-            buildEndTime.Value = Now + GameAudio.BuildPhaseSeconds(buildSeconds);
-            Debug.Log($"Starting building with {playerCount} connected player(s) and {itemPrefabs?.Length ?? 0} item prefab reference(s).", this);
+            buildAvailable.Value = false;
+            readyPlayers.Clear();
+            builderCount.Value = playerCount;
+            Debug.Log($"Starting round {roundNumber} with {playerCount} connected player(s) and {itemPrefabs?.Length ?? 0} item prefab reference(s).", this);
             buildStarted = true;
             Phase.Value = GamePhase.Building;
             // Here rather than in Apply: Apply also runs the moment the room spawns, before joiners have loaded.
             GeneratePlayerItems();
+            buildAvailable.Value = true;
         }
 
         void GeneratePlayerItems()
@@ -388,7 +498,6 @@ namespace Projector.Gameplay
             if (!IsServer)
                 return;
 
-            ClearGeneratedItems();
             if (itemPrefabs == null || itemPrefabs.Length == 0)
             {
                 Debug.LogError("No item mock prefabs are assigned to ProjectorGame.itemPrefabs.", this);
@@ -397,34 +506,64 @@ namespace Projector.Gameplay
 
             var clientIds = NetworkManager.ConnectedClientsIds.OrderBy(id => id).ToArray();
             var playerCount = clientIds.Length;
+            var isStarterRound = roundNumber <= Mathf.Clamp(starterRounds, 1, 2);
+            var itemsPerPlayer = isStarterRound ? 2 : 1;
             var order = new List<int>(itemPrefabs.Length);
+            var seenPrefabs = new HashSet<GameObject>();
             for (var i = 0; i < itemPrefabs.Length; i++)
-                if (itemPrefabs[i] != null)
+            {
+                var prefab = itemPrefabs[i];
+                if (prefab == null || !seenPrefabs.Add(prefab))
+                    continue;
+                if (!prefab.TryGetComponent<ItemMock>(out var item) || !prefab.TryGetComponent<NetworkObject>(out _))
+                {
+                    Debug.LogWarning($"Skipping item prefab '{prefab.name}': ItemMock and NetworkObject are required.", this);
+                    continue;
+                }
+                if (item.progression == ItemProgression.Starter ||
+                    (!isStarterRound && item.progression == ItemProgression.Advanced))
                     order.Add(i);
+            }
 
             if (order.Count == 0)
             {
-                Debug.LogError("ProjectorGame.itemPrefabs contains no valid GameObject references.", this);
+                Debug.LogError($"No eligible item prefabs for round {roundNumber}. Assign at least one Starter item with a NetworkObject.", this);
                 return;
             }
 
             var random = new System.Random(itemSeed);
-            for (var i = order.Count - 1; i > 0; i--)
-            {
-                var swap = random.Next(i + 1);
-                (order[i], order[swap]) = (order[swap], order[i]);
-            }
+            var roundSpawnCounts = new Dictionary<GameObject, int>();
+            var weights = new double[order.Count];
 
-            // Each player gets itemsPerPlayer different items, laid out in front of their own spot at the table
-            // (spots are 0.8 m apart): two side by side at the edge, the next one just behind.
-            var itemIndex = 0;
+            // Reweight after every successful spawn, across all players. Duplicates remain possible.
+            var spawnedThisRound = 0;
             for (var i = 0; i < playerCount; i++)
             {
                 var spotX = (PlayerRoster.SlotFor(clientIds[i]) - 1.5f) * 0.8f;
-                for (var k = 0; k < itemsPerPlayer; k++, itemIndex++)
+                for (var k = 0; k < itemsPerPlayer; k++)
                 {
-                    var offset = ItemOffsets[k % ItemOffsets.Length];
-                    var prefabIndex = order[itemIndex % order.Count];
+                    var offset = itemsPerPlayer == 1 ? new Vector2(0f, 0.15f) : ItemOffsets[k];
+                    var totalWeight = 0d;
+                    for (var candidate = 0; candidate < order.Count; candidate++)
+                    {
+                        var candidatePrefab = itemPrefabs[order[candidate]];
+                        roundSpawnCounts.TryGetValue(candidatePrefab, out var roundCount);
+                        gameSpawnCounts.TryGetValue(candidatePrefab, out var gameCount);
+                        weights[candidate] = SpawnWeight(roundCount, gameCount);
+                        totalWeight += weights[candidate];
+                    }
+                    var roll = random.NextDouble() * totalWeight;
+                    var selected = order.Count - 1;
+                    for (var candidate = 0; candidate < order.Count; candidate++)
+                    {
+                        roll -= weights[candidate];
+                        if (roll < 0d)
+                        {
+                            selected = candidate;
+                            break;
+                        }
+                    }
+                    var prefabIndex = order[selected];
                     var prefab = itemPrefabs[prefabIndex];
                     var item = prefab != null
                         ? Instantiate(prefab, new Vector3(spotX + offset.x, TableTop, offset.y), Quaternion.identity)
@@ -443,13 +582,24 @@ namespace Projector.Gameplay
                         continue;
                     }
                     generatedItems.Add(item);
+                    networkObject.DontDestroyWithOwner = true;
                     networkObject.SpawnWithOwnership(clientIds[i], true);
+                    roundSpawnCounts.TryGetValue(prefab, out var roundSpawns);
+                    gameSpawnCounts.TryGetValue(prefab, out var gameSpawns);
+                    roundSpawnCounts[prefab] = roundSpawns + 1;
+                    gameSpawnCounts[prefab] = gameSpawns + 1;
+                    spawnedThisRound++;
                 }
             }
-            Debug.Log($"Generated {generatedItems.Count} item(s) for {playerCount} player(s).", this);
+            Debug.Log($"Generated {spawnedThisRound} item(s) for {playerCount} player(s).", this);
         }
 
-        void ClearGeneratedItems()
+        // One previous spawn this round reduces weight 101-fold; one in the game reduces it fourfold.
+        // Rational decay stays positive even in long games, unlike exponential weights that can underflow.
+        static double SpawnWeight(int roundCount, int gameCount)
+            => 1d / ((1d + 100d * roundCount * roundCount) * (1d + 3d * gameCount));
+
+        void ClearGeneratedItems(bool preserveCommitted = false)
         {
             if (!IsServer)
             {
@@ -460,38 +610,84 @@ namespace Projector.Gameplay
             for (var i = generatedItems.Count - 1; i >= 0; i--)
             {
                 if (generatedItems[i] == null)
+                {
+                    generatedItems.RemoveAt(i);
+                    continue;
+                }
+                if (preserveCommitted && generatedItems[i].TryGetComponent<NetworkProp>(out var prop) && prop.Committed.Value)
                     continue;
                 var networkObject = generatedItems[i].GetComponent<NetworkObject>();
                 if (networkObject != null && networkObject.IsSpawned)
                     networkObject.Despawn(true);
                 else
                     Destroy(generatedItems[i]);
+                generatedItems.RemoveAt(i);
             }
-            generatedItems.Clear();
         }
 
-        // Host: freeze the current projection as the level, send it to everyone, start the race. A button press
-        // with an empty beam is refused (start and finish alone can't be crossed); the timer runs out regardless.
-        bool Project(bool evenIfEmpty)
+        // Host: once all connected players confirm, freeze the projection and start the race.
+        // Everyone draws the level from the same prop poses, the host's, so all players race on the same shapes.
+        void Project()
         {
-            if (Phase.Value != GamePhase.Building)
-                return true;
+            if (!IsServer || Phase.Value != GamePhase.Building)
+                return;
 
-            var shapes = capture.Capture();
-            if (shapes.Count == 0 && !evenIfEmpty)
-                return false;
+            var props = new List<Transform>();
+            foreach (var prop in capture.PropsInBeam())
+            {
+                if (!prop.TryGetComponent<NetworkProp>(out var networkProp) || !networkProp.IsSpawned)
+                    continue;
+                if (networkProp.Committed.Value)
+                {
+                    props.Add(prop);
+                    continue;
+                }
+                // Partially visible items are discarded, even if clipping could produce a collider.
+                if (!capture.IsFullyInBeam(prop))
+                    continue;
+                var projected = capture.Capture(new[] { prop }, null, true);
+                if (projected.Count == 0 || networkProp.OverlapsAnotherProp())
+                    continue;
+                var item = projected[0];
+                var usable = item.Kind == ShapeKind.Coin
+                    ? item.Center.x >= capture.LevelMin.x && item.Center.x <= capture.LevelMax.x &&
+                      item.Center.y >= capture.LevelMin.y && item.Center.y <= capture.LevelMax.y
+                    : item.Parts.Count > 0;
+                if (usable)
+                    props.Add(prop);
+            }
+            // All players have confirmed, so proceed even if every new item was discarded.
+            // Refusing an empty projection here would leave everyone ready with no way to continue.
+            foreach (var prop in props)
+                prop.GetComponent<NetworkProp>().CommitPlacement();
+            ClearGeneratedItems(preserveCommitted: true);
 
-            ProjectedLevel.Pack(shapes, out var points, out var counts, out var colors, out var kinds);
-            BuildLevelRpc(points, counts, colors, kinds);
+            var ids = new ulong[props.Count];
+            var positions = new Vector3[props.Count];
+            var rotations = new Quaternion[props.Count];
+            for (var i = 0; i < props.Count; i++)
+            {
+                ids[i] = props[i].GetComponent<NetworkObject>().NetworkObjectId;
+                props[i].GetPositionAndRotation(out positions[i], out rotations[i]);
+            }
+            BuildLevelRpc(ids, positions, rotations);
+            buildAvailable.Value = false;
             Phase.Value = GamePhase.Racing;
             race.BeginRace();
-            return true;
         }
 
         [Rpc(SendTo.Everyone)]
-        void BuildLevelRpc(Vector2[] points, int[] counts, Color[] colors, int[] kinds)
+        void BuildLevelRpc(ulong[] ids, Vector3[] positions, Quaternion[] rotations)
         {
-            platforms.BuildLevel(ProjectedLevel.Unpack(points, counts, colors, kinds));
+            var props = new List<Transform>();
+            var poses = new List<Pose>();
+            for (var i = 0; i < ids.Length; i++)
+                if (NetworkManager.SpawnManager.SpawnedObjects.TryGetValue(ids[i], out var networkObject))
+                {
+                    props.Add(networkObject.transform);
+                    poses.Add(new Pose(positions[i], rotations[i]));
+                }
+            platforms.BuildLevel(capture.Capture(props, poses, true));
         }
 
         // Host: called by the race when it ends.
@@ -515,11 +711,15 @@ namespace Projector.Gameplay
         // Local presentation for each phase.
         void Apply(GamePhase phase)
         {
+            UpdateBuildHud();
             var building = phase == GamePhase.Building;
             var racing = phase == GamePhase.Racing;
             var results = phase == GamePhase.Results;
 
             playAgainAt = -1f;
+            endRaceAt = -1f;
+            lastPullAt = float.NegativeInfinity;
+            UpdateRopeInteraction();
             if (building)
                 platforms.ClearLevel();
             platforms.SetPreviewVisible(building);

@@ -1016,6 +1016,10 @@ PrefabInstance:
       propertyPath: m_BackGroundColor.r
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1820897918385990095, guid: d6878e1999eb4b44a9f5a263af86c185, type: 3}
+      propertyPath: m_RequestedTrackingOriginMode
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 2218496723442559053, guid: d6878e1999eb4b44a9f5a263af86c185, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -2151,14 +2155,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projector.Gameplay.ProjectorGame
   ShowTopMostFoldoutHeaderGroup: 1
-  buildSeconds: 90
   capture: {fileID: 700666529}
   platforms: {fileID: 1522516945}
   race: {fileID: 599042258}
   scoreboard: {fileID: 1454215724}
   hudText: {fileID: 1510034802}
   rope: {fileID: 1015810342}
-  projectorButton: {fileID: 833427863}
   viewingSpots:
   - {fileID: 465904077}
   - {fileID: 1109460682}
@@ -2175,7 +2177,7 @@ MonoBehaviour:
   - {fileID: 7637691517151267652, guid: 23dda1d0b0f344c9283ea8ad744ca50f, type: 3}
   - {fileID: 7950941678173501192, guid: 4db32b63a49df4bc181e3768af82577f, type: 3}
   - {fileID: 529438161947779684, guid: 0a65085576b0c4960bd94d616ebc56a0, type: 3}
-  itemsPerPlayer: 3
+  starterRounds: 2
 --- !u!1 &599736119
 GameObject:
   m_ObjectHideFlags: 0
@@ -2778,7 +2780,14 @@ MonoBehaviour:
     height: 6
   levelMin: {x: -15, y: 0}
   levelMax: {x: 15, y: 10}
-  minimumArea: 0.05
+  minimumPartArea: 0.004
+  lightOffset: {x: 0.3, y: 1.6, z: -0.8}
+  lightStrength: 0.8
+  lightFalloff: 0.12
+  skyLight: {r: 0.56, g: 0.56, b: 0.58, a: 1}
+  groundLight: {r: 0.34, g: 0.32, b: 0.3, a: 1}
+  lensLight: 0.2
+  highlights: 0.35
 --- !u!1 &730800983
 GameObject:
   m_ObjectHideFlags: 0
@@ -3838,7 +3847,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projector.Gameplay.PullRope
   rope: {fileID: 123544948}
-  pullDistance: 0.15
+  pullDistance: 0.10
   maxDrop: 0.3
 --- !u!114 &1015810343
 MonoBehaviour:
@@ -6196,7 +6205,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: Pull to start
+  m_Text: Confirm in your HUD when done
 --- !u!222 &1510034803
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -6370,6 +6379,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Projector.Gameplay.ProjectedPlatforms
   shapeMaterial: {fileID: 2100000, guid: 8e0f3ddfdb49a48cd84575289744456e, type: 2}
   coinMaterial: {fileID: 2100000, guid: 8e0f3ddfdb49a48cd84575289744456e, type: 2}
+  drawingMaterial: {fileID: 2100000, guid: 7ce4fc9881453463794d79b71e2eae10, type: 2}
   depth: 1.5
   fixedPlatforms:
   - serializedVersion: 2

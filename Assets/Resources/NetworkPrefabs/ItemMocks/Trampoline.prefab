@@ -958,6 +958,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProjectorGame.Items.ItemMock
   displayName: Trampoline
   category: 1
+  progression: 1
   gameplayNote: Bounces players high into the air.
   killHeight: -2
   maxDistanceFromHome: 15
