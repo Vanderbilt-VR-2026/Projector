@@ -3,7 +3,8 @@ using Projector.Networking;
 using Unity.Netcode;
 using Unity.XR.CoreUtils;
 using UnityEngine;
-using UnityEngine.XR;
+using UnityEngine.XR.Management;
+using UnityEngine.XR.OpenXR;
 
 namespace Projector.Gameplay
 {
@@ -31,7 +32,6 @@ namespace Projector.Gameplay
         bool lastHeadAvailable;
         bool hasReportedHeadAvailability;
         bool appFocused = true;
-        bool presenceStale;
         float bodyYaw;
         float bodyYawSpeed;
 
@@ -88,38 +88,28 @@ namespace Projector.Gameplay
                 nameLabel.rotation = Quaternion.LookRotation(nameLabel.position - viewer.transform.position);
         }
 
-        // The Quest suspends the app when the headset comes off (or the system menu takes focus) and resumes it
-        // when it goes back on. After a resume the head's userPresence can stay stale (false), which used to leave
-        // the game paused forever, so presence only counts again once it has read true since the resume.
+        // The Quest suspends the app (or takes its focus) when the headset comes off or the system menu opens, and
+        // resumes it when the headset goes back on. The head InputDevice's isTracked/userPresence values can stay
+        // stale after a resume, which left the game paused forever, so read the OpenXR session itself instead: it
+        // is FOCUSED only while the headset is worn and the app has input, and the runtime reports presence
+        // changes as events, so neither goes stale.
         void OnApplicationFocus(bool hasFocus) => SetAppFocused(hasFocus);
         void OnApplicationPause(bool paused) => SetAppFocused(!paused);
 
         void SetAppFocused(bool focused)
         {
-            if (focused && !appFocused)
-                presenceStale = true;
             appFocused = focused;
-            if (!IsOwner)
-                return;
-            if (!focused)
+            if (IsOwner && !focused)
                 ReportHeadAvailable(false);
         }
 
         void PollHeadTracking()
         {
-            var device = InputDevices.GetDeviceAtXRNode(XRNode.Head);
-            if (!device.isValid)
-                return;
-
-            var isTracked = false;
-            var userPresence = false;
-            var hasTracking = device.TryGetFeatureValue(CommonUsages.isTracked, out isTracked);
-            var hasPresence = device.TryGetFeatureValue(CommonUsages.userPresence, out userPresence);
-            if (hasPresence && userPresence)
-                presenceStale = false;
-            var tracked = !hasTracking || isTracked;
-            var present = !hasPresence || userPresence || presenceStale;
-            ReportHeadAvailable(appFocused && tracked && present);
+            var openXRRunning = XRGeneralSettings.Instance != null && XRGeneralSettings.Instance.Manager != null
+                && XRGeneralSettings.Instance.Manager.activeLoader is OpenXRLoader;
+            // Without a running OpenXR session (e.g. the editor with XR off) app focus is all there is to go on.
+            var present = !openXRRunning || (OpenXRUtility.IsSessionFocused && OpenXRUtility.IsUserPresent);
+            ReportHeadAvailable(appFocused && present);
         }
 
         void ReportHeadAvailable(bool headAvailable)
