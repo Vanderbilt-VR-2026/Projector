@@ -732,19 +732,20 @@ namespace Projector.Gameplay
                 provider.enabled = !racing && !isLocallyPaused;
 
             if (racing)
-                FaceTheWall();
+                MoveToViewingSpot();
             if (!building)
                 GameAudio.PlaySong(racing ? GameAudio.Song.Race : GameAudio.Song.None);
         }
 
-        void FaceTheWall()
+        void MoveToViewingSpot()
         {
             var origin = FindFirstObjectByType<XROrigin>();
             var mine = FindObjectsByType<PlayerIdentity>(FindObjectsSortMode.None).FirstOrDefault(identity => identity.IsOwner && identity.GetComponent<NetworkAvatar>() != null);
             if (origin == null || viewingSpots.Length == 0)
                 return;
             var spot = viewingSpots[(mine != null ? mine.Slot.Value : 0) % viewingSpots.Length];
-            origin.transform.SetPositionAndRotation(spot.position, spot.rotation);
+            // Move only: snapping the player's heading to face the screen in one frame is jarring in a headset.
+            origin.transform.position = spot.position;
         }
     }
 }
