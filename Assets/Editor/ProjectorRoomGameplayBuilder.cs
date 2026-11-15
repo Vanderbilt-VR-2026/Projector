@@ -129,6 +129,8 @@ namespace Projector.Editor
             light.intensity = 6f;
             light.color = new Color(1f, 0.97f, 0.9f);
             light.shadows = LightShadows.None;
+            // Lightmaps and probes only (ProjectorRoomLightingBuilder): the Quest renders no additional lights.
+            light.lightmapBakeType = LightmapBakeType.Baked;
             return capture;
         }
 

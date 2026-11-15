@@ -93,8 +93,8 @@ LightmapSettings:
     m_ExportTrainingData: 0
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
-  m_LightingDataAsset: {fileID: 20201, guid: 0000000000000000f000000000000000, type: 0}
-  m_LightingSettings: {fileID: 0}
+  m_LightingDataAsset: {fileID: 112000000, guid: 4905c064c1e7542fa82aaf7634e48bd8, type: 2}
+  m_LightingSettings: {fileID: 4890085278179872738, guid: 85855142dd98b480aa75ece23d399da2, type: 2}
 --- !u!196 &4
 NavMeshSettings:
   serializedVersion: 2
@@ -179,7 +179,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &55259896
 Transform:
@@ -228,7 +228,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -316,7 +316,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &70053600
 Transform:
@@ -365,7 +365,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 2
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -474,7 +474,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 50
     m_Alignment: 1
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -711,7 +711,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &129503162
 Transform:
@@ -760,7 +760,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 2
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -906,7 +906,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &166435293
 Transform:
@@ -955,7 +955,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -980,6 +980,272 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 166435292}
   m_Mesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &205574750
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 205574752}
+  - component: {fileID: 205574751}
+  m_Layer: 0
+  m_Name: Light Probes
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!220 &205574751
+LightProbeGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 205574750}
+  m_Enabled: 1
+  m_SourcePositions:
+  - {x: -3.5, y: 0.25, z: -5}
+  - {x: -3.5, y: 0.25, z: -3.5}
+  - {x: -3.5, y: 0.25, z: -2}
+  - {x: -3.5, y: 0.25, z: -0.5}
+  - {x: -3.5, y: 0.25, z: 1}
+  - {x: -3.5, y: 0.25, z: 2.5}
+  - {x: -3.5, y: 0.25, z: 4}
+  - {x: -3.5, y: 0.25, z: 5.5}
+  - {x: -3.5, y: 1.25, z: -5}
+  - {x: -3.5, y: 1.25, z: -3.5}
+  - {x: -3.5, y: 1.25, z: -2}
+  - {x: -3.5, y: 1.25, z: -0.5}
+  - {x: -3.5, y: 1.25, z: 1}
+  - {x: -3.5, y: 1.25, z: 2.5}
+  - {x: -3.5, y: 1.25, z: 4}
+  - {x: -3.5, y: 1.25, z: 5.5}
+  - {x: -3.5, y: 2.25, z: -5}
+  - {x: -3.5, y: 2.25, z: -3.5}
+  - {x: -3.5, y: 2.25, z: -2}
+  - {x: -3.5, y: 2.25, z: -0.5}
+  - {x: -3.5, y: 2.25, z: 1}
+  - {x: -3.5, y: 2.25, z: 2.5}
+  - {x: -3.5, y: 2.25, z: 4}
+  - {x: -3.5, y: 2.25, z: 5.5}
+  - {x: -3.5, y: 3.25, z: -5}
+  - {x: -3.5, y: 3.25, z: -3.5}
+  - {x: -3.5, y: 3.25, z: -2}
+  - {x: -3.5, y: 3.25, z: -0.5}
+  - {x: -3.5, y: 3.25, z: 1}
+  - {x: -3.5, y: 3.25, z: 2.5}
+  - {x: -3.5, y: 3.25, z: 4}
+  - {x: -3.5, y: 3.25, z: 5.5}
+  - {x: -2, y: 0.25, z: -5}
+  - {x: -2, y: 0.25, z: -3.5}
+  - {x: -2, y: 0.25, z: -2}
+  - {x: -2, y: 0.25, z: -0.5}
+  - {x: -2, y: 0.25, z: 1}
+  - {x: -2, y: 0.25, z: 2.5}
+  - {x: -2, y: 0.25, z: 4}
+  - {x: -2, y: 0.25, z: 5.5}
+  - {x: -2, y: 1.25, z: -5}
+  - {x: -2, y: 1.25, z: -3.5}
+  - {x: -2, y: 1.25, z: -2}
+  - {x: -2, y: 1.25, z: -0.5}
+  - {x: -2, y: 1.25, z: 1}
+  - {x: -2, y: 1.25, z: 2.5}
+  - {x: -2, y: 1.25, z: 4}
+  - {x: -2, y: 1.25, z: 5.5}
+  - {x: -2, y: 2.25, z: -5}
+  - {x: -2, y: 2.25, z: -3.5}
+  - {x: -2, y: 2.25, z: -2}
+  - {x: -2, y: 2.25, z: -0.5}
+  - {x: -2, y: 2.25, z: 1}
+  - {x: -2, y: 2.25, z: 2.5}
+  - {x: -2, y: 2.25, z: 4}
+  - {x: -2, y: 2.25, z: 5.5}
+  - {x: -2, y: 3.25, z: -5}
+  - {x: -2, y: 3.25, z: -3.5}
+  - {x: -2, y: 3.25, z: -2}
+  - {x: -2, y: 3.25, z: -0.5}
+  - {x: -2, y: 3.25, z: 1}
+  - {x: -2, y: 3.25, z: 2.5}
+  - {x: -2, y: 3.25, z: 4}
+  - {x: -2, y: 3.25, z: 5.5}
+  - {x: -0.5, y: 0.25, z: -5}
+  - {x: -0.5, y: 0.25, z: -3.5}
+  - {x: -0.5, y: 0.25, z: -2}
+  - {x: -0.5, y: 0.25, z: -0.5}
+  - {x: -0.5, y: 0.25, z: 1}
+  - {x: -0.5, y: 0.25, z: 2.5}
+  - {x: -0.5, y: 0.25, z: 4}
+  - {x: -0.5, y: 0.25, z: 5.5}
+  - {x: -0.5, y: 1.25, z: -5}
+  - {x: -0.5, y: 1.25, z: -3.5}
+  - {x: -0.5, y: 1.25, z: -2}
+  - {x: -0.5, y: 1.25, z: -0.5}
+  - {x: -0.5, y: 1.25, z: 1}
+  - {x: -0.5, y: 1.25, z: 2.5}
+  - {x: -0.5, y: 1.25, z: 4}
+  - {x: -0.5, y: 1.25, z: 5.5}
+  - {x: -0.5, y: 2.25, z: -5}
+  - {x: -0.5, y: 2.25, z: -3.5}
+  - {x: -0.5, y: 2.25, z: -2}
+  - {x: -0.5, y: 2.25, z: -0.5}
+  - {x: -0.5, y: 2.25, z: 1}
+  - {x: -0.5, y: 2.25, z: 2.5}
+  - {x: -0.5, y: 2.25, z: 4}
+  - {x: -0.5, y: 2.25, z: 5.5}
+  - {x: -0.5, y: 3.25, z: -5}
+  - {x: -0.5, y: 3.25, z: -3.5}
+  - {x: -0.5, y: 3.25, z: -2}
+  - {x: -0.5, y: 3.25, z: -0.5}
+  - {x: -0.5, y: 3.25, z: 1}
+  - {x: -0.5, y: 3.25, z: 2.5}
+  - {x: -0.5, y: 3.25, z: 4}
+  - {x: -0.5, y: 3.25, z: 5.5}
+  - {x: 1, y: 0.25, z: -5}
+  - {x: 1, y: 0.25, z: -3.5}
+  - {x: 1, y: 0.25, z: -2}
+  - {x: 1, y: 0.25, z: -0.5}
+  - {x: 1, y: 0.25, z: 1}
+  - {x: 1, y: 0.25, z: 2.5}
+  - {x: 1, y: 0.25, z: 4}
+  - {x: 1, y: 0.25, z: 5.5}
+  - {x: 1, y: 1.25, z: -5}
+  - {x: 1, y: 1.25, z: -3.5}
+  - {x: 1, y: 1.25, z: -2}
+  - {x: 1, y: 1.25, z: -0.5}
+  - {x: 1, y: 1.25, z: 1}
+  - {x: 1, y: 1.25, z: 2.5}
+  - {x: 1, y: 1.25, z: 4}
+  - {x: 1, y: 1.25, z: 5.5}
+  - {x: 1, y: 2.25, z: -5}
+  - {x: 1, y: 2.25, z: -3.5}
+  - {x: 1, y: 2.25, z: -2}
+  - {x: 1, y: 2.25, z: -0.5}
+  - {x: 1, y: 2.25, z: 1}
+  - {x: 1, y: 2.25, z: 2.5}
+  - {x: 1, y: 2.25, z: 4}
+  - {x: 1, y: 2.25, z: 5.5}
+  - {x: 1, y: 3.25, z: -5}
+  - {x: 1, y: 3.25, z: -3.5}
+  - {x: 1, y: 3.25, z: -2}
+  - {x: 1, y: 3.25, z: -0.5}
+  - {x: 1, y: 3.25, z: 1}
+  - {x: 1, y: 3.25, z: 2.5}
+  - {x: 1, y: 3.25, z: 4}
+  - {x: 1, y: 3.25, z: 5.5}
+  - {x: 2.5, y: 0.25, z: -5}
+  - {x: 2.5, y: 0.25, z: -3.5}
+  - {x: 2.5, y: 0.25, z: -2}
+  - {x: 2.5, y: 0.25, z: -0.5}
+  - {x: 2.5, y: 0.25, z: 1}
+  - {x: 2.5, y: 0.25, z: 2.5}
+  - {x: 2.5, y: 0.25, z: 4}
+  - {x: 2.5, y: 0.25, z: 5.5}
+  - {x: 2.5, y: 1.25, z: -5}
+  - {x: 2.5, y: 1.25, z: -3.5}
+  - {x: 2.5, y: 1.25, z: -2}
+  - {x: 2.5, y: 1.25, z: -0.5}
+  - {x: 2.5, y: 1.25, z: 1}
+  - {x: 2.5, y: 1.25, z: 2.5}
+  - {x: 2.5, y: 1.25, z: 4}
+  - {x: 2.5, y: 1.25, z: 5.5}
+  - {x: 2.5, y: 2.25, z: -5}
+  - {x: 2.5, y: 2.25, z: -3.5}
+  - {x: 2.5, y: 2.25, z: -2}
+  - {x: 2.5, y: 2.25, z: -0.5}
+  - {x: 2.5, y: 2.25, z: 1}
+  - {x: 2.5, y: 2.25, z: 2.5}
+  - {x: 2.5, y: 2.25, z: 4}
+  - {x: 2.5, y: 2.25, z: 5.5}
+  - {x: 2.5, y: 3.25, z: -5}
+  - {x: 2.5, y: 3.25, z: -3.5}
+  - {x: 2.5, y: 3.25, z: -2}
+  - {x: 2.5, y: 3.25, z: -0.5}
+  - {x: 2.5, y: 3.25, z: 1}
+  - {x: 2.5, y: 3.25, z: 2.5}
+  - {x: 2.5, y: 3.25, z: 4}
+  - {x: 2.5, y: 3.25, z: 5.5}
+  - {x: 4, y: 0.25, z: -5}
+  - {x: 4, y: 0.25, z: -3.5}
+  - {x: 4, y: 0.25, z: -2}
+  - {x: 4, y: 0.25, z: -0.5}
+  - {x: 4, y: 0.25, z: 1}
+  - {x: 4, y: 0.25, z: 2.5}
+  - {x: 4, y: 0.25, z: 4}
+  - {x: 4, y: 0.25, z: 5.5}
+  - {x: 4, y: 1.25, z: -5}
+  - {x: 4, y: 1.25, z: -3.5}
+  - {x: 4, y: 1.25, z: -2}
+  - {x: 4, y: 1.25, z: -0.5}
+  - {x: 4, y: 1.25, z: 1}
+  - {x: 4, y: 1.25, z: 2.5}
+  - {x: 4, y: 1.25, z: 4}
+  - {x: 4, y: 1.25, z: 5.5}
+  - {x: 4, y: 2.25, z: -5}
+  - {x: 4, y: 2.25, z: -3.5}
+  - {x: 4, y: 2.25, z: -2}
+  - {x: 4, y: 2.25, z: -0.5}
+  - {x: 4, y: 2.25, z: 1}
+  - {x: 4, y: 2.25, z: 2.5}
+  - {x: 4, y: 2.25, z: 4}
+  - {x: 4, y: 2.25, z: 5.5}
+  - {x: 4, y: 3.25, z: -5}
+  - {x: 4, y: 3.25, z: -3.5}
+  - {x: 4, y: 3.25, z: -2}
+  - {x: 4, y: 3.25, z: -0.5}
+  - {x: 4, y: 3.25, z: 1}
+  - {x: 4, y: 3.25, z: 2.5}
+  - {x: 4, y: 3.25, z: 4}
+  - {x: 4, y: 3.25, z: 5.5}
+  - {x: 5.5, y: 0.25, z: -5}
+  - {x: 5.5, y: 0.25, z: -3.5}
+  - {x: 5.5, y: 0.25, z: -2}
+  - {x: 5.5, y: 0.25, z: -0.5}
+  - {x: 5.5, y: 0.25, z: 1}
+  - {x: 5.5, y: 0.25, z: 2.5}
+  - {x: 5.5, y: 0.25, z: 4}
+  - {x: 5.5, y: 0.25, z: 5.5}
+  - {x: 5.5, y: 1.25, z: -5}
+  - {x: 5.5, y: 1.25, z: -3.5}
+  - {x: 5.5, y: 1.25, z: -2}
+  - {x: 5.5, y: 1.25, z: -0.5}
+  - {x: 5.5, y: 1.25, z: 1}
+  - {x: 5.5, y: 1.25, z: 2.5}
+  - {x: 5.5, y: 1.25, z: 4}
+  - {x: 5.5, y: 1.25, z: 5.5}
+  - {x: 5.5, y: 2.25, z: -5}
+  - {x: 5.5, y: 2.25, z: -3.5}
+  - {x: 5.5, y: 2.25, z: -2}
+  - {x: 5.5, y: 2.25, z: -0.5}
+  - {x: 5.5, y: 2.25, z: 1}
+  - {x: 5.5, y: 2.25, z: 2.5}
+  - {x: 5.5, y: 2.25, z: 4}
+  - {x: 5.5, y: 2.25, z: 5.5}
+  - {x: 5.5, y: 3.25, z: -5}
+  - {x: 5.5, y: 3.25, z: -3.5}
+  - {x: 5.5, y: 3.25, z: -2}
+  - {x: 5.5, y: 3.25, z: -0.5}
+  - {x: 5.5, y: 3.25, z: 1}
+  - {x: 5.5, y: 3.25, z: 2.5}
+  - {x: 5.5, y: 3.25, z: 4}
+  - {x: 5.5, y: 3.25, z: 5.5}
+  m_Dering: 1
+--- !u!4 &205574752
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 205574750}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &255420771
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1146,7 +1412,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &286205009
 Transform:
@@ -1195,7 +1461,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -1289,7 +1555,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &327603234
 Transform:
@@ -1338,7 +1604,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -1576,7 +1842,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &333719816
 Transform:
@@ -1814,7 +2080,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 52
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -1958,7 +2224,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &465927223
 Transform:
@@ -2007,7 +2273,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -2225,7 +2491,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &611466848
 Transform:
@@ -2274,7 +2540,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -2672,6 +2938,7 @@ GameObject:
   - component: {fileID: 700666527}
   - component: {fileID: 700666529}
   - component: {fileID: 700666528}
+  - component: {fileID: 700666530}
   m_Layer: 0
   m_Name: Projector Lens
   m_TagString: Untagged
@@ -2744,7 +3011,7 @@ Light:
     serializedVersion: 2
     m_Bits: 4294967295
   m_RenderingLayerMask: 1
-  m_Lightmapping: 4
+  m_Lightmapping: 2
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
@@ -2788,6 +3055,35 @@ MonoBehaviour:
   groundLight: {r: 0.34, g: 0.32, b: 0.3, a: 1}
   lensLight: 0.2
   highlights: 0.35
+--- !u!114 &700666530
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 700666526}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalLightData
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_CustomShadowLayers: 0
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
+  m_RenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_ShadowRenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_Version: 4
+  m_LightLayerMask: 1
+  m_ShadowLayerMask: 1
+  m_RenderingLayers: 1
+  m_ShadowRenderingLayers: 1
 --- !u!1 &730800983
 GameObject:
   m_ObjectHideFlags: 0
@@ -2949,7 +3245,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &740199470
 Transform:
@@ -2998,7 +3294,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -3086,7 +3382,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 120
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -3200,7 +3496,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &833427861
 Transform:
@@ -3346,7 +3642,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -3411,7 +3707,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &856254785
 Transform:
@@ -3460,7 +3756,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -3569,7 +3865,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 72
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -3636,7 +3932,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &1012850297
 Transform:
@@ -3685,7 +3981,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -3847,7 +4143,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projector.Gameplay.PullRope
   rope: {fileID: 123544948}
-  pullDistance: 0.10
+  pullDistance: 0.1
   maxDrop: 0.3
 --- !u!114 &1015810343
 MonoBehaviour:
@@ -4076,7 +4372,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 120
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -4109,7 +4405,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &1053261844
 Transform:
@@ -4158,7 +4454,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -4261,7 +4557,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &1058904776
 Transform:
@@ -4407,7 +4703,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -4798,7 +5094,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &1180823308
 Transform:
@@ -4847,7 +5143,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -4956,7 +5252,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 50
     m_Alignment: 1
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -4989,7 +5285,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &1235795385
 Transform:
@@ -5038,7 +5334,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -5140,7 +5436,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &1347640316
 Transform:
@@ -5189,7 +5485,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -5277,7 +5573,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 50
     m_Alignment: 1
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -5643,7 +5939,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &1453282242
 Transform:
@@ -5692,7 +5988,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -5866,7 +6162,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &1458303127
 Transform:
@@ -6040,7 +6336,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &1475742692
 Transform:
@@ -6089,7 +6385,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -6198,7 +6494,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 130
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -6231,7 +6527,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &1515610584
 Transform:
@@ -6280,7 +6576,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -6871,7 +7167,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 120
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -6903,7 +7199,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &1725468559
 Transform:
@@ -6952,7 +7248,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -7465,7 +7761,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 50
     m_Alignment: 1
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -7859,7 +8155,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &2037306636
 Transform:
@@ -7908,7 +8204,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -7943,6 +8239,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2037312012}
   - component: {fileID: 2037312011}
+  - component: {fileID: 2037312013}
   m_Layer: 0
   m_Name: Stage Wash
   m_TagString: Untagged
@@ -8000,7 +8297,7 @@ Light:
     serializedVersion: 2
     m_Bits: 4294967295
   m_RenderingLayerMask: 1
-  m_Lightmapping: 4
+  m_Lightmapping: 1
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
@@ -8030,6 +8327,35 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2037312013
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2037312010}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalLightData
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_CustomShadowLayers: 0
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
+  m_RenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_ShadowRenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_Version: 4
+  m_LightLayerMask: 1
+  m_ShadowLayerMask: 1
+  m_RenderingLayers: 1
+  m_ShadowRenderingLayers: 1
 --- !u!1 &2055067303
 GameObject:
   m_ObjectHideFlags: 0
@@ -8082,7 +8408,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &2069581331
 Transform:
@@ -8131,7 +8457,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -8196,7 +8522,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 69
   m_IsActive: 1
 --- !u!4 &2074838689
 Transform:
@@ -8342,7 +8668,7 @@ MeshRenderer:
   m_StaticBatchRoot: {fileID: 0}
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
+  m_ScaleInLightmap: 4
   m_ReceiveGI: 1
   m_PreserveUVs: 1
   m_IgnoreNormalsForChartDetection: 0
@@ -8527,3 +8853,4 @@ SceneRoots:
   - {fileID: 255420771}
   - {fileID: 1367355515}
   - {fileID: 1303693119}
+  - {fileID: 205574752}

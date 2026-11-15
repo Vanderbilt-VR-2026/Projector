@@ -379,7 +379,9 @@ namespace Projector.Editor
         // fades the seats out with distance, and reflections are black so nothing picks up a sky tint.
         private static void CreateLighting()
         {
-            CreateDirectionalLight("Stage Wash", new Color(1f, 0.86f, 0.7f), 0.4f, new Vector3(40f, -90f, 0f));
+            // Mixed: realtime on moving things, its bounce baked by ProjectorRoomLightingBuilder.
+            CreateDirectionalLight("Stage Wash", new Color(1f, 0.86f, 0.7f), 0.4f, new Vector3(40f, -90f, 0f))
+                .lightmapBakeType = LightmapBakeType.Mixed;
 
             RenderSettings.ambientMode = AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.11f, 0.095f, 0.09f);

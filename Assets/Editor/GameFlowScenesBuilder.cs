@@ -11,6 +11,7 @@ namespace Projector.Editor
         {
             NetworkPrefabsBuilder.BuildAll();
             ProjectorRoomGameplayBuilder.AddGameplay();
+            ProjectorRoomLightingBuilder.Bake();
             // The waiting room is the landing menu's game-found screen, and the race plays on the projector wall.
             SceneBuildUtility.RemoveSceneFromBuildSettings("Assets/Scenes/Lobby.unity");
             SceneBuildUtility.RemoveSceneFromBuildSettings("Assets/Scenes/Platformer2D.unity");
