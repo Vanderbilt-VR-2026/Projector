@@ -12,7 +12,11 @@ namespace Projector.Gameplay
     public class RunnerController : NetworkBehaviour
     {
         [SerializeField] float runSpeed = 6f;
-        [SerializeField] float jumpSpeed = 8.5f;
+        [Tooltip("Upward speed of a jump: about 2.5 units high, roughly twice the runner's height.")]
+        [SerializeField] float jumpSpeed = 7f;
+        [Tooltip("Share of run speed kept while airborne, so a jump or bounce can't carry a runner across half the stage.")]
+        [Range(0f, 1f)]
+        [SerializeField] float airControl = 0.6f;
 
         Rigidbody body;
         CapsuleCollider capsule;
@@ -90,7 +94,7 @@ namespace Projector.Gameplay
             }
 
             var grounded = IsGrounded();
-            velocity.x = move.ReadValue<Vector2>().x * runSpeed;
+            velocity.x = move.ReadValue<Vector2>().x * runSpeed * (grounded ? 1f : airControl);
             if (jumpQueued && grounded)
                 velocity.y = jumpSpeed;
             jumpQueued = false;
