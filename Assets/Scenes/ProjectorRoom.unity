@@ -3847,7 +3847,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projector.Gameplay.PullRope
   rope: {fileID: 123544948}
-  pullDistance: 0.15
+  pullDistance: 0.10
   maxDrop: 0.3
 --- !u!114 &1015810343
 MonoBehaviour:
