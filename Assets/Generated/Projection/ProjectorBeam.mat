@@ -25,8 +25,14 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
-    - _Intensity: 1
+    - _Intensity: 0.03
+    - _Softness: 0.18
+    - _WallFade: 0.14
     m_Colors:
+    - _Across: {r: 0, g: 0, b: 9, a: 0}
+    - _Axis: {r: -7.58, g: 2.78, b: 6.1499996, a: 0}
+    - _Lens: {r: 3.6799998, g: 1.3199999, b: 0.54999995, a: 0}
     - _Tint: {r: 1, g: 0.96999997, b: 0.9, a: 1}
+    - _Up: {r: 0, g: 3, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
