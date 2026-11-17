@@ -40,21 +40,22 @@ public static class ItemMocksBuilder
     {
         public string name;
         public ItemCategory category;
+        public ItemProgression progression;
         public string note;
     }
 
     static readonly ItemSpec[] k_Items =
     {
-        new ItemSpec { name = "Plank", category = ItemCategory.Platform, note = "Long flat platform. Basic bridge piece." },
-        new ItemSpec { name = "Block", category = ItemCategory.Platform, note = "1x1 solid block. Stack it to build walls or steps." },
-        new ItemSpec { name = "L-Block", category = ItemCategory.Platform, note = "L-shaped platform with a ledge to hang off." },
-        new ItemSpec { name = "Stairs", category = ItemCategory.Platform, note = "Three steps going up to the right." },
-        new ItemSpec { name = "Ramp", category = ItemCategory.Platform, note = "Slope. Its shadow becomes a walkable incline." },
-        new ItemSpec { name = "Arch", category = ItemCategory.Platform, note = "Bridge on two legs. Players can run under or over it." },
-        new ItemSpec { name = "Trampoline", category = ItemCategory.Movement, note = "Bounces players high into the air." },
-        new ItemSpec { name = "Spike Strip", category = ItemCategory.Hazard, note = "Touching the spikes sends you back to the start." },
-        new ItemSpec { name = "Buzzsaw", category = ItemCategory.Hazard, note = "Spinning blade hazard." },
-        new ItemSpec { name = "Coin", category = ItemCategory.Bonus, note = "Collect for bonus points." },
+        new ItemSpec { name = "Plank", category = ItemCategory.Platform, progression = ItemProgression.Starter, note = "Long flat platform. Basic bridge piece." },
+        new ItemSpec { name = "Block", category = ItemCategory.Platform, progression = ItemProgression.Starter, note = "1x1 solid block. Stack it to build walls or steps." },
+        new ItemSpec { name = "L-Block", category = ItemCategory.Platform, progression = ItemProgression.Starter, note = "L-shaped platform with a ledge to hang off." },
+        new ItemSpec { name = "Stairs", category = ItemCategory.Platform, progression = ItemProgression.Starter, note = "Three steps going up to the right." },
+        new ItemSpec { name = "Ramp", category = ItemCategory.Platform, progression = ItemProgression.Starter, note = "Slope. Its shadow becomes a walkable incline." },
+        new ItemSpec { name = "Arch", category = ItemCategory.Platform, progression = ItemProgression.Starter, note = "Bridge on two legs. Players can run under or over it." },
+        new ItemSpec { name = "Trampoline", category = ItemCategory.Movement, progression = ItemProgression.Advanced, note = "Bounces players high into the air." },
+        new ItemSpec { name = "Spike Strip", category = ItemCategory.Hazard, progression = ItemProgression.Advanced, note = "Touching the spikes sends you back to the start." },
+        new ItemSpec { name = "Buzzsaw", category = ItemCategory.Hazard, progression = ItemProgression.Advanced, note = "Spinning blade hazard." },
+        new ItemSpec { name = "Coin", category = ItemCategory.Bonus, progression = ItemProgression.Advanced, note = "Collect for bonus points." },
     };
 
     static Dictionary<string, GameObject> BuildItemMocks()
@@ -161,6 +162,7 @@ public static class ItemMocksBuilder
             var item = root.AddComponent<ItemMock>();
             item.displayName = spec.name;
             item.category = spec.category;
+            item.progression = spec.progression;
             item.gameplayNote = spec.note;
             root.AddComponent<NetworkProp>();
 

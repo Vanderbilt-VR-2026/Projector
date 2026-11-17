@@ -283,6 +283,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProjectorGame.Items.ItemMock
   displayName: Stairs
   category: 0
+  progression: 0
   gameplayNote: Three steps going up to the right.
   killHeight: -2
   maxDistanceFromHome: 15

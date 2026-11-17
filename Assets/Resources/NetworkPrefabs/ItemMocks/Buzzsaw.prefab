@@ -1411,6 +1411,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProjectorGame.Items.ItemMock
   displayName: Buzzsaw
   category: 2
+  progression: 1
   gameplayNote: Spinning blade hazard.
   killHeight: -2
   maxDistanceFromHome: 15

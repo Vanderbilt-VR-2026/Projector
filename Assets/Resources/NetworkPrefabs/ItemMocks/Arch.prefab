@@ -283,6 +283,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProjectorGame.Items.ItemMock
   displayName: Arch
   category: 0
+  progression: 0
   gameplayNote: Bridge on two legs. Players can run under or over it.
   killHeight: -2
   maxDistanceFromHome: 15

@@ -14,7 +14,7 @@ namespace Projector.Editor
     // Adds the whole game to the projector room (QuestRoomSceneBuilder's theater) without rebuilding the room.
     // The projector films an off-screen 2D "stage" with an orthographic camera and shows it on the screen on the
     // front wall through the projection shader; props in the beam are drawn on that stage as 2D shapes, and the
-    // race runs there too. A rope hanging beside the screen starts and ends rounds, with what it does written in a
+    // race runs there too. A rope hanging beside the screen ends races and restarts rounds, with what it does written in a
     // square of light on the wall. Re-running replaces the previous "Gameplay" objects.
     public static class ProjectorRoomGameplayBuilder
     {
@@ -400,9 +400,6 @@ namespace Projector.Editor
                 AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Resources/NetworkPrefabs/ItemMocks/Coin.prefab")
             });
             SetReferences(game, "viewingSpots", CreateViewingSpots(root.transform, capture));
-            var projectorButton = GameObject.Find("Control Button 1");
-            if (projectorButton != null)
-                SetReference(game, "projectorButton", projectorButton.GetComponent<XRSimpleInteractable>());
 
             var runner = AssetDatabase.LoadAssetAtPath<NetworkObject>(NetworkPrefabsBuilder.RunnerPath);
             SetReference(race, "runnerPrefab", runner);
@@ -460,7 +457,7 @@ namespace Projector.Editor
             canvas.transform.localPosition = new Vector3(0f, 0f, -0.01f);
             canvas.transform.localRotation = Quaternion.identity;
             canvas.transform.localScale = Vector3.one * 0.0012f;
-            Text text = CreateText("Pull to start", canvas.transform, 130, Color.black, "Status");
+            Text text = CreateText("Confirm in your HUD when done", canvas.transform, 130, Color.black, "Status");
             text.horizontalOverflow = HorizontalWrapMode.Wrap;
             text.font = BodyFont;
             SetFullSize(text.rectTransform);

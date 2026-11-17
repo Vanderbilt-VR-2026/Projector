@@ -6,9 +6,9 @@ namespace Projector.Gameplay
     // Draws the projected 2D game on the projection stage (the plane z = 0 of this transform, filmed by the
     // projector camera): each prop as the projector renders it, its faces in its own colors with the corners
     // and edges inked in, the look of a 2D game rather than a shadow.
-    // While building it shows a live preview of the props; on PROJECT the drawings become the level: plain
-    // platforms get a coin over them, hazards send runners back to the start, bounce pads launch them, and a
-    // coin item becomes a pickup. Start and finish platforms are always there.
+    // While building it shows a live preview of the props; on PROJECT the drawings become the level:
+    // hazards send runners back to the start, bounce pads launch them, and only coin items become pickups.
+    // Start and finish platforms are always there.
     public class ProjectedPlatforms : MonoBehaviour
     {
         static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
@@ -111,9 +111,6 @@ namespace Projector.Gameplay
                         break;
                     case ShapeKind.Bounce:
                         drawing.Root.AddComponent<BouncePad>().Setup(drawing.Renderer);
-                        break;
-                    default:
-                        CreateCoinAt("Coin " + (i + 1), new Vector2(item.Center.x, item.Max.y + 0.6f));
                         break;
                 }
             }
